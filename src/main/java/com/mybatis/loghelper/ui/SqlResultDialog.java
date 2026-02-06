@@ -1,13 +1,21 @@
 package com.mybatis.loghelper.ui;
 
 import com.intellij.openapi.ide.CopyPasteManager;
+import com.intellij.openapi.editor.Editor;
+import com.intellij.openapi.editor.EditorFactory;
+import com.intellij.openapi.editor.EditorSettings;
+import com.intellij.openapi.editor.Document;
+import com.intellij.openapi.fileTypes.FileType;
+import com.intellij.openapi.fileTypes.FileTypeManager;
+import com.intellij.openapi.fileTypes.PlainTextFileType;
+import com.intellij.openapi.fileTypes.UnknownFileType;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.DialogWrapper;
+import com.intellij.ui.EditorTextField;
 import com.intellij.ui.components.JBLabel;
-import com.intellij.ui.components.JBScrollPane;
-import com.intellij.ui.components.JBTextArea;
 import com.intellij.util.ui.JBUI;
 import com.mybatis.loghelper.parser.SqlBeautifier;
+import com.mybatis.loghelper.settings.MyBatisLogHelperSettings;
 import org.jetbrains.annotations.Nullable;
 
 import javax.swing.Action;
@@ -50,10 +58,14 @@ public final class SqlResultDialog extends DialogWrapper {
      * SQL 美化器，用于长 SQL 的格式化显示。
      */
     private final SqlBeautifier beautifier = new SqlBeautifier();
+    // 鎻掍欢鎸佷箙鍖栭厤缃殑缁熶竴鍏ュ彛
+    private final MyBatisLogHelperSettings settings;
+    // 褰撳墠椤圭洰锛屼緵 EditorTextField 鍒涘缓浣跨敤
+    private final Project project;
     /**
      * 中心文本框组件引用，用于运行时切换原始/美化内容。
      */
-    private JBTextArea textArea;
+    private EditorTextField editorField;
     /**
      * Beautify 按钮状态：true 表示已美化。
      */
@@ -69,10 +81,14 @@ public final class SqlResultDialog extends DialogWrapper {
      */
     public SqlResultDialog(@Nullable Project project, String sql, List<String> warnings, boolean autoCopied) {
         super(project);
+        this.project = project;
+        this.settings = MyBatisLogHelperSettings.getInstance();
         this.sql = sql;
         this.singleLineSql = toSingleLine(sql);
         this.warnings = warnings;
         this.autoCopied = autoCopied;
+        // 读取上次对话框的显示模式
+        this.beautified = settings.isDialogBeautified();
         setTitle("MyBatis Log Helper");
         init();
     }
@@ -94,18 +110,17 @@ public final class SqlResultDialog extends DialogWrapper {
         }
 
         // 中间显示 SQL 文本框（只读）。
-        textArea = new JBTextArea(singleLineSql);
-        textArea.setEditable(false);
-        textArea.setLineWrap(true);
-        textArea.setWrapStyleWord(true);
-        panel.add(new JBScrollPane(textArea), BorderLayout.CENTER);
+        // 根据上次偏好决定默认显示原始单行还是美化后的 SQL
+        String initialText = beautified ? beautifier.beautify(sql) : singleLineSql;
+        editorField = createEditorField(initialText);
+        panel.add(editorField, BorderLayout.CENTER);
 
         // 底部显示“已自动复制”提示。
         if (autoCopied) {
             panel.add(new JBLabel("Copied to clipboard."), BorderLayout.SOUTH);
         }
 
-        panel.setPreferredSize(new Dimension(760, 320));
+        panel.setPreferredSize(new Dimension(settings.getDialogWidth(), settings.getDialogHeight()));
         return panel;
     }
 
@@ -122,15 +137,78 @@ public final class SqlResultDialog extends DialogWrapper {
                 toggleBeautify(this);
             }
         };
+        beautifyAction.putValue(Action.NAME, beautified ? "Raw" : "Beautify");
 
-        Action copyAction = new DialogWrapperAction("Copy") {
+        // 根据设置决定是否把 Copy 直接变成 Copy & Close
+        boolean closeAfterCopy = settings.isCloseAfterCopy();
+        Action copyAction = new DialogWrapperAction(closeAfterCopy ? "Copy & Close" : "Copy") {
             @Override
             protected void doAction(java.awt.event.ActionEvent e) {
-                String toCopy = textArea == null ? sql : textArea.getText();
-                CopyPasteManager.getInstance().setContents(new StringSelection(toCopy));
+                copyToClipboard();
+                if (closeAfterCopy) {
+                    close(OK_EXIT_CODE);
+                }
             }
         };
-        return new Action[]{beautifyAction, copyAction, getOKAction()};
+        // 未开启“复制后关闭”时，额外提供一个独立的 Copy & Close
+        Action copyAndCloseAction = new DialogWrapperAction("Copy & Close") {
+            @Override
+            protected void doAction(java.awt.event.ActionEvent e) {
+                copyToClipboard();
+                close(OK_EXIT_CODE);
+            }
+        };
+        if (closeAfterCopy) {
+            return new Action[]{beautifyAction, copyAction, getOKAction()};
+        }
+        return new Action[]{beautifyAction, copyAction, copyAndCloseAction, getOKAction()};
+    }
+
+    @Override
+    public void dispose() {
+        persistDialogState();
+        super.dispose();
+    }
+
+    /**
+     * 关闭前记录对话框大小和显示模式
+     */
+    private void persistDialogState() {
+        settings.setDialogBeautified(beautified);
+        Dimension size = getSize();
+        if (size != null && size.width > 0 && size.height > 0) {
+            settings.setDialogWidth(size.width);
+            settings.setDialogHeight(size.height);
+        }
+    }
+
+    /**
+     * 统一复制逻辑，避免不同按钮重复代码
+     */
+    private void copyToClipboard() {
+        String toCopy = editorField == null ? sql : editorField.getText();
+        CopyPasteManager.getInstance().setContents(new StringSelection(toCopy));
+    }
+
+    /**
+     * 创建带语法高亮的编辑器展示（优先 SQL，高亮不可用则退化为纯文本）
+     */
+    private EditorTextField createEditorField(String text) {
+        FileType fileType = FileTypeManager.getInstance().getFileTypeByExtension("sql");
+        if (fileType == UnknownFileType.INSTANCE) {
+            fileType = PlainTextFileType.INSTANCE;
+        }
+        // 使用 Editor 文档，避免直接 TextArea 带来的样式限制
+        Document document = EditorFactory.getInstance().createDocument(text);
+        EditorTextField field = new EditorTextField(document, project, fileType, true, false);
+        field.setFontInheritedFromLAF(false);
+        field.addSettingsProvider(editor -> {
+            EditorSettings editorSettings = editor.getSettings();
+            editorSettings.setLineNumbersShown(false);
+            editorSettings.setUseSoftWraps(true);
+            editorSettings.setCaretRowShown(false);
+        });
+        return field;
     }
 
     /**
@@ -143,16 +221,20 @@ public final class SqlResultDialog extends DialogWrapper {
      * @param action Beautify 按钮 Action
      */
     private void toggleBeautify(Action action) {
-        if (textArea == null) {
+        if (editorField == null) {
             return;
         }
         beautified = !beautified;
         if (beautified) {
-            textArea.setText(beautifier.beautify(sql));
+            editorField.setText(beautifier.beautify(sql));
         } else {
-            textArea.setText(singleLineSql);
+            editorField.setText(singleLineSql);
         }
-        textArea.setCaretPosition(0);
+        action.putValue(Action.NAME, beautified ? "Raw" : "Beautify");
+        Editor editor = editorField.getEditor();
+        if (editor != null) {
+            editor.getCaretModel().moveToOffset(0);
+        }
     }
 
     /**

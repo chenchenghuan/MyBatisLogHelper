@@ -37,6 +37,14 @@ public final class MyBatisLogHelperSettings implements PersistentStateComponent<
          * 是否在还原后自动复制.
          */
         public boolean autoCopy = false;
+        // 点击复制按钮时，是否自动关闭弹窗
+        public boolean closeAfterCopy = false;
+        // 弹窗是否默认使用美化模式显示
+        public boolean dialogBeautified = false;
+        // 保存的弹窗宽度
+        public int dialogWidth = 760;
+        // 保存的弹窗高度
+        public int dialogHeight = 320;
     }
 
     /**
@@ -75,6 +83,13 @@ public final class MyBatisLogHelperSettings implements PersistentStateComponent<
         // 防御式兜底，避免历史配置缺失导致空值.
         if (this.state.dateTimeFormat == null || this.state.dateTimeFormat.isBlank()) {
             this.state.dateTimeFormat = "yyyy-MM-dd HH:mm:ss";
+        }
+        // 兼容旧配置：宽高非法时回退默认值
+        if (this.state.dialogWidth <= 0) {
+            this.state.dialogWidth = 760;
+        }
+        if (this.state.dialogHeight <= 0) {
+            this.state.dialogHeight = 320;
         }
     }
 
@@ -118,6 +133,62 @@ public final class MyBatisLogHelperSettings implements PersistentStateComponent<
      */
     public void setAutoCopy(boolean autoCopy) {
         state.autoCopy = autoCopy;
+    }
+
+    /**
+     * @return 点击复制后是否自动关闭弹窗
+     */
+    public boolean isCloseAfterCopy() {
+        return state.closeAfterCopy;
+    }
+
+    /**
+     * @param closeAfterCopy 设置复制后是否自动关闭弹窗
+     */
+    public void setCloseAfterCopy(boolean closeAfterCopy) {
+        state.closeAfterCopy = closeAfterCopy;
+    }
+
+    /**
+     * @return 弹窗是否默认使用美化模式显示
+     */
+    public boolean isDialogBeautified() {
+        return state.dialogBeautified;
+    }
+
+    /**
+     * @param dialogBeautified 设置弹窗默认使用美化模式显示
+     */
+    public void setDialogBeautified(boolean dialogBeautified) {
+        state.dialogBeautified = dialogBeautified;
+    }
+
+    /**
+     * @return 保存的弹窗宽度
+     */
+    public int getDialogWidth() {
+        return state.dialogWidth;
+    }
+
+    /**
+     * @return 保存的弹窗高度
+     */
+    public int getDialogHeight() {
+        return state.dialogHeight;
+    }
+
+    /**
+     * @param dialogWidth 设置保存的弹窗宽度
+     */
+    public void setDialogWidth(int dialogWidth) {
+        state.dialogWidth = dialogWidth;
+    }
+
+    /**
+     * @param dialogHeight 设置保存的弹窗高度
+     */
+    public void setDialogHeight(int dialogHeight) {
+        state.dialogHeight = dialogHeight;
     }
 
     /**

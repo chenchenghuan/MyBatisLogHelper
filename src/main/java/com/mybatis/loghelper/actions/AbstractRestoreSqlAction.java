@@ -6,7 +6,8 @@ import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.CommonDataKeys;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.ide.CopyPasteManager;
-import com.intellij.openapi.ui.Messages;
+import com.intellij.notification.NotificationGroupManager;
+import com.intellij.notification.NotificationType;
 import com.mybatis.loghelper.parser.LogBlockExtractResult;
 import com.mybatis.loghelper.parser.MyBatisLogBlockExtractor;
 import com.mybatis.loghelper.parser.SqlRestoreResult;
@@ -75,7 +76,10 @@ public abstract class AbstractRestoreSqlAction extends AnAction {
         LogBlockExtractResult extracted = extractor.extract(text, caretLine);
         if (!extracted.isSuccess()) {
             // 提取失败时统一弹 warning 并终止.
-            Messages.showWarningDialog(e.getProject(), extracted.errorMessage(), "MyBatis Log Helper");
+            NotificationGroupManager.getInstance()
+                    .getNotificationGroup("MyBatis Log Helper")
+                    .createNotification(extracted.errorMessage(), NotificationType.WARNING)
+                    .notify(e.getProject());
             return;
         }
 

@@ -33,6 +33,14 @@ public final class MyBatisLogHelperConfigurable implements Configurable {
      * 自动复制开关组件.
      */
     private JBCheckBox autoCopyCheckBox;
+    /**
+     * 复制后自动关闭弹窗开关组件.
+     */
+    private JBCheckBox closeAfterCopyCheckBox;
+    /**
+     * 结果弹窗默认美化开关组件.
+     */
+    private JBCheckBox beautifyByDefaultCheckBox;
 
     /**
      * 设置页根面板.
@@ -59,11 +67,17 @@ public final class MyBatisLogHelperConfigurable implements Configurable {
         booleanAsNumberCheckBox = new JBCheckBox("Boolean output style: 1/0 (off = TRUE/FALSE)");
         dateTimeFormatField = new JBTextField();
         autoCopyCheckBox = new JBCheckBox("Auto copy after restore");
+        // 复制后自动关闭弹窗
+        closeAfterCopyCheckBox = new JBCheckBox("Close dialog after copy");
+        // 结果弹窗默认美化
+        beautifyByDefaultCheckBox = new JBCheckBox("Beautify by default in result dialog");
 
         panel = FormBuilder.createFormBuilder()
                 .addComponent(booleanAsNumberCheckBox)
                 .addLabeledComponent("DateTime format:", dateTimeFormatField)
                 .addComponent(autoCopyCheckBox)
+                .addComponent(closeAfterCopyCheckBox)
+                .addComponent(beautifyByDefaultCheckBox)
                 .addComponentFillVertically(new JPanel(), 0)
                 .getPanel();
 
@@ -80,8 +94,11 @@ public final class MyBatisLogHelperConfigurable implements Configurable {
     @Override
     public boolean isModified() {
         MyBatisLogHelperSettings settings = MyBatisLogHelperSettings.getInstance();
+        // 新增设置项也参与修改比较
         return settings.isBooleanAsOneZero() != booleanAsNumberCheckBox.isSelected()
                 || settings.isAutoCopy() != autoCopyCheckBox.isSelected()
+                || settings.isCloseAfterCopy() != closeAfterCopyCheckBox.isSelected()
+                || settings.isDialogBeautified() != beautifyByDefaultCheckBox.isSelected()
                 || !settings.getDateTimeFormat().equals(dateTimeFormatField.getText().trim());
     }
 
@@ -108,6 +125,9 @@ public final class MyBatisLogHelperConfigurable implements Configurable {
         settings.setBooleanAsOneZero(booleanAsNumberCheckBox.isSelected());
         settings.setDateTimeFormat(pattern);
         settings.setAutoCopy(autoCopyCheckBox.isSelected());
+        // 应用新增配置项
+        settings.setCloseAfterCopy(closeAfterCopyCheckBox.isSelected());
+        settings.setDialogBeautified(beautifyByDefaultCheckBox.isSelected());
     }
 
     /**
@@ -125,6 +145,13 @@ public final class MyBatisLogHelperConfigurable implements Configurable {
         if (autoCopyCheckBox != null) {
             autoCopyCheckBox.setSelected(settings.isAutoCopy());
         }
+        // 还原新增设置项
+        if (closeAfterCopyCheckBox != null) {
+            closeAfterCopyCheckBox.setSelected(settings.isCloseAfterCopy());
+        }
+        if (beautifyByDefaultCheckBox != null) {
+            beautifyByDefaultCheckBox.setSelected(settings.isDialogBeautified());
+        }
     }
 
     /**
@@ -138,5 +165,7 @@ public final class MyBatisLogHelperConfigurable implements Configurable {
         booleanAsNumberCheckBox = null;
         dateTimeFormatField = null;
         autoCopyCheckBox = null;
+        closeAfterCopyCheckBox = null;
+        beautifyByDefaultCheckBox = null;
     }
 }

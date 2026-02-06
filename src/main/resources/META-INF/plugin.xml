@@ -4,7 +4,76 @@
     <vendor email="dev@example.com">MyBatisLogHelper Team</vendor>
 
     <description><![CDATA[
-        Restore executable SQL from MyBatis Preparing/Parameters logs in Run/Debug Console.
+        <h2>MyBatis Log Helper</h2>
+        <p>
+            Restore executable SQL from MyBatis <b>Preparing</b> and <b>Parameters</b> logs in the Run/Debug Console.
+            This helps you quickly reproduce the exact SQL with all parameters filled in.
+        </p>
+
+        <h3>Key Features</h3>
+        <ul>
+            <li>Context menu actions in Run/Debug Console: <b>Restore Executable SQL</b>, <b>Restore &amp; Copy SQL</b></li>
+            <li>Auto-detects the nearest MyBatis log block around the caret</li>
+            <li>Parses parameters and replaces <code>?</code> in order</li>
+            <li>Handles common types: null, numbers, strings (with quotes), dates, booleans</li>
+            <li>Warns when SQL placeholders and parameter count do not match</li>
+            <li>Beautify long SQL for easier reading</li>
+        </ul>
+
+        <h3>How to Use</h3>
+        <ol>
+            <li>Open Run/Debug Console and locate MyBatis log output.</li>
+            <li>Place the caret on any line inside the log block.</li>
+            <li>Right-click and choose <b>Restore Executable SQL</b> (or <b>Restore &amp; Copy SQL</b>).</li>
+            <li>The restored SQL will be shown in a dialog with a Copy button.</li>
+        </ol>
+
+        <h3>Supported Log Formats</h3>
+        <ul>
+            <li><code>Preparing:</code> or <code>==&gt;  Preparing:</code> for SQL</li>
+            <li><code>Parameters:</code> or <code>==&gt; Parameters:</code> for parameters</li>
+        </ul>
+
+        <h3>Example</h3>
+        <p>Input log:</p>
+        <pre>
+2026-02-04 10:00:01 [DEBUG] - ==&gt;  Preparing: select * from t_user where name = ? and age &gt; ?
+2026-02-04 10:00:01 [DEBUG] - ==&gt; Parameters: "ZhangSan"(String), 18(Integer)
+        </pre>
+        <p>Restored SQL:</p>
+        <pre>
+select * from t_user where name = 'ZhangSan' and age &gt; 18
+        </pre>
+
+        <h3>Settings</h3>
+        <p>
+            Settings are available under <b>Settings / Preferences &gt; MyBatis Log Helper</b>:
+        </p>
+        <ul>
+            <li>Boolean output style (TRUE/FALSE or 1/0)</li>
+            <li>DateTime format (default: <code>yyyy-MM-dd HH:mm:ss</code>)</li>
+            <li>Auto copy restored SQL</li>
+        </ul>
+
+        <h3>Tips</h3>
+        <ul>
+            <li>Place the caret anywhere inside the log block to restore SQL.</li>
+            <li>Use Beautify to format long SQL for readability.</li>
+            <li>Copy button always copies the current view (raw or beautified).</li>
+        </ul>
+
+        <h3>FAQ</h3>
+        <ul>
+            <li><b>Why do I see warnings?</b> Usually the log block is incomplete or parameter count mismatches.</li>
+            <li><b>Can it work with multi-line SQL?</b> Yes, the extractor collects consecutive SQL lines.</li>
+            <li><b>Does it support null values?</b> Yes, null values are restored as <code>NULL</code>.</li>
+        </ul>
+
+        <h3>Notes</h3>
+        <ul>
+            <li>If only Preparing or only Parameters is found, a warning will be shown.</li>
+            <li>When counts mismatch, the dialog still shows the best-effort restoration.</li>
+        </ul>
     ]]></description>
 
     <depends>com.intellij.modules.platform</depends>
@@ -14,6 +83,7 @@
                 id="com.mybatis.loghelper.settings"
                 displayName="MyBatis Log Helper"
                 instance="com.mybatis.loghelper.settings.MyBatisLogHelperConfigurable"/>
+        <notificationGroup id="MyBatis Log Helper" displayType="BALLOON"/>
     </extensions>
 
     <actions>
@@ -22,6 +92,14 @@
                 text="Restore Executable SQL"
                 description="Restore executable SQL from MyBatis logs">
             <add-to-group group-id="ConsoleView.PopupMenu" anchor="last"/>
+        </action>
+        <action id="com.mybatis.loghelper.actions.RestoreAndCopySqlAction"
+                class="com.mybatis.loghelper.actions.RestoreAndCopySqlAction"
+                text="Restore &amp; Copy SQL"
+                description="Restore SQL and copy it to clipboard">
+            <add-to-group group-id="ConsoleView.PopupMenu"
+                          anchor="after"
+                          relative-to-action="com.mybatis.loghelper.actions.RestoreExecutableSqlAction"/>
         </action>
     </actions>
 </idea-plugin>
