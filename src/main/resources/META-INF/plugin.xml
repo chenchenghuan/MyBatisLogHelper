@@ -1,0 +1,27 @@
+<idea-plugin>
+    <id>com.mybatis.loghelper</id>
+    <name>MyBatis Log Helper</name>
+    <vendor email="dev@example.com">MyBatisLogHelper Team</vendor>
+
+    <description><![CDATA[
+        Restore executable SQL from MyBatis Preparing/Parameters logs in Run/Debug Console.
+    ]]></description>
+
+    <depends>com.intellij.modules.platform</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <applicationConfigurable
+                id="com.mybatis.loghelper.settings"
+                displayName="MyBatis Log Helper"
+                instance="com.mybatis.loghelper.settings.MyBatisLogHelperConfigurable"/>
+    </extensions>
+
+    <actions>
+        <action id="com.mybatis.loghelper.actions.RestoreExecutableSqlAction"
+                class="com.mybatis.loghelper.actions.RestoreExecutableSqlAction"
+                text="Restore Executable SQL"
+                description="Restore executable SQL from MyBatis logs">
+            <add-to-group group-id="ConsoleView.PopupMenu" anchor="last"/>
+        </action>
+    </actions>
+</idea-plugin>
