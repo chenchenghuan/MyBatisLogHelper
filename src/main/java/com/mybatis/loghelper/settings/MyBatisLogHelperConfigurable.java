@@ -34,6 +34,10 @@ public final class MyBatisLogHelperConfigurable implements Configurable {
      */
     private JBCheckBox autoCopyCheckBox;
     /**
+     * 自动追加分号开关组件.
+     */
+    private JBCheckBox appendSemicolonCheckBox;
+    /**
      * 复制后自动关闭弹窗开关组件.
      */
     private JBCheckBox closeAfterCopyCheckBox;
@@ -41,6 +45,10 @@ public final class MyBatisLogHelperConfigurable implements Configurable {
      * 结果弹窗默认美化开关组件.
      */
     private JBCheckBox beautifyByDefaultCheckBox;
+    /**
+     * 复制是否保留美化格式开关组件.
+     */
+    private JBCheckBox copyBeautifiedCheckBox;
 
     /**
      * 设置页根面板.
@@ -67,16 +75,20 @@ public final class MyBatisLogHelperConfigurable implements Configurable {
         booleanAsNumberCheckBox = new JBCheckBox("Boolean output style: 1/0 (off = TRUE/FALSE)");
         dateTimeFormatField = new JBTextField();
         autoCopyCheckBox = new JBCheckBox("Auto copy after restore");
+        appendSemicolonCheckBox = new JBCheckBox("Append semicolon automatically");
         // 复制后自动关闭弹窗
         closeAfterCopyCheckBox = new JBCheckBox("Close dialog after copy");
         // 结果弹窗默认美化
         beautifyByDefaultCheckBox = new JBCheckBox("Beautify by default in result dialog");
+        copyBeautifiedCheckBox = new JBCheckBox("Copy keeps beautified format");
 
         panel = FormBuilder.createFormBuilder()
                 .addComponent(booleanAsNumberCheckBox)
                 .addLabeledComponent("DateTime format:", dateTimeFormatField)
                 .addComponent(autoCopyCheckBox)
                 .addComponent(closeAfterCopyCheckBox)
+                .addComponent(copyBeautifiedCheckBox)
+                .addComponent(appendSemicolonCheckBox)
                 .addComponent(beautifyByDefaultCheckBox)
                 .addComponentFillVertically(new JPanel(), 0)
                 .getPanel();
@@ -97,7 +109,9 @@ public final class MyBatisLogHelperConfigurable implements Configurable {
         // 新增设置项也参与修改比较
         return settings.isBooleanAsOneZero() != booleanAsNumberCheckBox.isSelected()
                 || settings.isAutoCopy() != autoCopyCheckBox.isSelected()
+                || settings.isAppendSemicolon() != appendSemicolonCheckBox.isSelected()
                 || settings.isCloseAfterCopy() != closeAfterCopyCheckBox.isSelected()
+                || settings.isCopyBeautified() != copyBeautifiedCheckBox.isSelected()
                 || settings.isDialogBeautified() != beautifyByDefaultCheckBox.isSelected()
                 || !settings.getDateTimeFormat().equals(dateTimeFormatField.getText().trim());
     }
@@ -125,8 +139,10 @@ public final class MyBatisLogHelperConfigurable implements Configurable {
         settings.setBooleanAsOneZero(booleanAsNumberCheckBox.isSelected());
         settings.setDateTimeFormat(pattern);
         settings.setAutoCopy(autoCopyCheckBox.isSelected());
+        settings.setAppendSemicolon(appendSemicolonCheckBox.isSelected());
         // 应用新增配置项
         settings.setCloseAfterCopy(closeAfterCopyCheckBox.isSelected());
+        settings.setCopyBeautified(copyBeautifiedCheckBox.isSelected());
         settings.setDialogBeautified(beautifyByDefaultCheckBox.isSelected());
     }
 
@@ -145,9 +161,15 @@ public final class MyBatisLogHelperConfigurable implements Configurable {
         if (autoCopyCheckBox != null) {
             autoCopyCheckBox.setSelected(settings.isAutoCopy());
         }
+        if (appendSemicolonCheckBox != null) {
+            appendSemicolonCheckBox.setSelected(settings.isAppendSemicolon());
+        }
         // 还原新增设置项
         if (closeAfterCopyCheckBox != null) {
             closeAfterCopyCheckBox.setSelected(settings.isCloseAfterCopy());
+        }
+        if (copyBeautifiedCheckBox != null) {
+            copyBeautifiedCheckBox.setSelected(settings.isCopyBeautified());
         }
         if (beautifyByDefaultCheckBox != null) {
             beautifyByDefaultCheckBox.setSelected(settings.isDialogBeautified());
@@ -165,7 +187,9 @@ public final class MyBatisLogHelperConfigurable implements Configurable {
         booleanAsNumberCheckBox = null;
         dateTimeFormatField = null;
         autoCopyCheckBox = null;
+        appendSemicolonCheckBox = null;
         closeAfterCopyCheckBox = null;
+        copyBeautifiedCheckBox = null;
         beautifyByDefaultCheckBox = null;
     }
 }

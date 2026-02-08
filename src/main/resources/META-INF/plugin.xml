@@ -53,6 +53,10 @@ select * from t_user where name = 'ZhangSan' and age &gt; 18
             <li>Boolean output style (TRUE/FALSE or 1/0)</li>
             <li>DateTime format (default: <code>yyyy-MM-dd HH:mm:ss</code>)</li>
             <li>Auto copy restored SQL</li>
+            <li>Append semicolon automatically</li>
+            <li>Beautify by default in result dialog</li>
+            <li>Copy keeps beautified format</li>
+            <li>Close dialog after copy</li>
         </ul>
 
         <h3>Tips</h3>

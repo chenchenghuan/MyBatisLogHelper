@@ -37,13 +37,29 @@ public final class MyBatisLogHelperSettings implements PersistentStateComponent<
          * 是否在还原后自动复制.
          */
         public boolean autoCopy = false;
-        // 点击复制按钮时，是否自动关闭弹窗
+        /**
+         * 是否自动追加分号.
+         */
+        public boolean appendSemicolon = true;
+        /**
+         * 点击复制按钮时，是否自动关闭弹窗.
+         */
         public boolean closeAfterCopy = false;
-        // 弹窗是否默认使用美化模式显示
+        /**
+         * 复制时是否保留美化格式（复制当前显示内容）.
+         */
+        public boolean copyBeautified = true;
+        /**
+         * 弹窗是否默认使用美化模式显示.
+         */
         public boolean dialogBeautified = false;
-        // 保存的弹窗宽度
+        /**
+         * 保存的弹窗宽度.
+         */
         public int dialogWidth = 760;
-        // 保存的弹窗高度
+        /**
+         * 保存的弹窗高度.
+         */
         public int dialogHeight = 320;
     }
 
@@ -136,6 +152,20 @@ public final class MyBatisLogHelperSettings implements PersistentStateComponent<
     }
 
     /**
+     * @return 是否自动追加分号
+     */
+    public boolean isAppendSemicolon() {
+        return state.appendSemicolon;
+    }
+
+    /**
+     * @param appendSemicolon 设置是否自动追加分号
+     */
+    public void setAppendSemicolon(boolean appendSemicolon) {
+        state.appendSemicolon = appendSemicolon;
+    }
+
+    /**
      * @return 点击复制后是否自动关闭弹窗
      */
     public boolean isCloseAfterCopy() {
@@ -147,6 +177,20 @@ public final class MyBatisLogHelperSettings implements PersistentStateComponent<
      */
     public void setCloseAfterCopy(boolean closeAfterCopy) {
         state.closeAfterCopy = closeAfterCopy;
+    }
+
+    /**
+     * @return 复制时是否保留美化格式
+     */
+    public boolean isCopyBeautified() {
+        return state.copyBeautified;
+    }
+
+    /**
+     * @param copyBeautified 设置复制时是否保留美化格式
+     */
+    public void setCopyBeautified(boolean copyBeautified) {
+        state.copyBeautified = copyBeautified;
     }
 
     /**

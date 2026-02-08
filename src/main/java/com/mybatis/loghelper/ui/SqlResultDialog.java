@@ -15,10 +15,12 @@ import com.intellij.ui.EditorTextField;
 import com.intellij.ui.components.JBLabel;
 import com.intellij.util.ui.JBUI;
 import com.mybatis.loghelper.parser.SqlBeautifier;
+import com.mybatis.loghelper.parser.MyBatisLogBlock;
 import com.mybatis.loghelper.settings.MyBatisLogHelperSettings;
 import org.jetbrains.annotations.Nullable;
 
 import javax.swing.Action;
+import javax.swing.BoxLayout;
 import javax.swing.JComponent;
 import javax.swing.JPanel;
 import java.awt.BorderLayout;
@@ -58,18 +60,24 @@ public final class SqlResultDialog extends DialogWrapper {
      * SQL 美化器，用于长 SQL 的格式化显示。
      */
     private final SqlBeautifier beautifier = new SqlBeautifier();
-    // 鎻掍欢鎸佷箙鍖栭厤缃殑缁熶竴鍏ュ彛
+    // 插件持久化配置的统一入口
     private final MyBatisLogHelperSettings settings;
-    // 褰撳墠椤圭洰锛屼緵 EditorTextField 鍒涘缓浣跨敤
+    // 当前项目，供 EditorTextField 创建使用
     private final Project project;
     /**
      * 中心文本框组件引用，用于运行时切换原始/美化内容。
      */
     private EditorTextField editorField;
+    private JPanel headerPanel;
     /**
      * Beautify 按钮状态：true 表示已美化。
      */
     private boolean beautified;
+    private Integer preparingLine;
+    private Integer parametersLine;
+    private String preparingSnippet;
+    private String parametersSnippet;
+    private static final int MAX_SNIPPET_LENGTH = 160;
 
     /**
      * 构造结果弹窗。
@@ -94,6 +102,24 @@ public final class SqlResultDialog extends DialogWrapper {
     }
 
     /**
+     * 设置日志块定位信息（Preparing/Parameters 行号与片段）。
+     *
+     * @param block 提取到的日志块
+     * @return 当前对话框实例
+     */
+    public SqlResultDialog setLogBlockInfo(MyBatisLogBlock block) {
+        if (block == null) {
+            return this;
+        }
+        this.preparingLine = block.preparingLine() + 1;
+        this.parametersLine = block.parametersLine() + 1;
+        this.preparingSnippet = block.sqlTemplate();
+        this.parametersSnippet = block.parametersRaw();
+        updateHeaderPanel();
+        return this;
+    }
+
+    /**
      * 创建弹窗中心面板。
      *
      * @return 中心面板组件
@@ -103,11 +129,10 @@ public final class SqlResultDialog extends DialogWrapper {
         JPanel panel = new JPanel(new BorderLayout(0, 8));
         panel.setBorder(JBUI.Borders.empty(8));
 
-        // 顶部统一展示 warning。
-        if (!warnings.isEmpty()) {
-            String warningHtml = "<html><b>WARNING:</b><br/>- " + String.join("<br/>- ", warnings) + "</html>";
-            panel.add(new JBLabel(warningHtml), BorderLayout.NORTH);
-        }
+        headerPanel = new JPanel();
+        headerPanel.setLayout(new BoxLayout(headerPanel, BoxLayout.Y_AXIS));
+        updateHeaderPanel();
+        panel.add(headerPanel, BorderLayout.NORTH);
 
         // 中间显示 SQL 文本框（只读）。
         // 根据上次偏好决定默认显示原始单行还是美化后的 SQL
@@ -122,6 +147,40 @@ public final class SqlResultDialog extends DialogWrapper {
 
         panel.setPreferredSize(new Dimension(settings.getDialogWidth(), settings.getDialogHeight()));
         return panel;
+    }
+
+    private boolean hasLogBlockInfo() {
+        return preparingLine != null && parametersLine != null;
+    }
+
+    private void updateHeaderPanel() {
+        if (headerPanel == null) {
+            return;
+        }
+        headerPanel.removeAll();
+        if (hasLogBlockInfo()) {
+            headerPanel.add(new JBLabel(buildLogBlockHtml()));
+        }
+        if (!warnings.isEmpty()) {
+            String warningHtml = "<html><b>WARNING:</b><br/>- " + String.join("<br/>- ", warnings) + "</html>";
+            headerPanel.add(new JBLabel(warningHtml));
+        }
+        headerPanel.setVisible(headerPanel.getComponentCount() > 0);
+        headerPanel.revalidate();
+        headerPanel.repaint();
+    }
+
+    private String buildLogBlockHtml() {
+        String preparingText = abbreviate(preparingSnippet, MAX_SNIPPET_LENGTH);
+        String parametersText = abbreviate(parametersSnippet, MAX_SNIPPET_LENGTH);
+        String preparingLineText = preparingLine == null ? "-" : preparingLine.toString();
+        String parametersLineText = parametersLine == null ? "-" : parametersLine.toString();
+        return "<html><b>Log block:</b><br/>"
+                + "Preparing (line " + preparingLineText + "): "
+                + escapeHtml(preparingText)
+                + "<br/>Parameters (line " + parametersLineText + "): "
+                + escapeHtml(parametersText)
+                + "</html>";
     }
 
     /**
@@ -186,8 +245,37 @@ public final class SqlResultDialog extends DialogWrapper {
      * 统一复制逻辑，避免不同按钮重复代码
      */
     private void copyToClipboard() {
-        String toCopy = editorField == null ? sql : editorField.getText();
+        String toCopy;
+        if (settings.isCopyBeautified()) {
+            if (editorField != null) {
+                toCopy = editorField.getText();
+            } else {
+                toCopy = beautified ? beautifier.beautify(sql) : sql;
+            }
+        } else {
+            toCopy = sql;
+        }
         CopyPasteManager.getInstance().setContents(new StringSelection(toCopy));
+    }
+
+    private static String abbreviate(String text, int maxLength) {
+        if (text == null) {
+            return "";
+        }
+        String trimmed = text.trim();
+        if (trimmed.length() <= maxLength) {
+            return trimmed;
+        }
+        return trimmed.substring(0, Math.max(0, maxLength - 3)) + "...";
+    }
+
+    private static String escapeHtml(String text) {
+        if (text == null || text.isEmpty()) {
+            return "";
+        }
+        return text.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;");
     }
 
     /**
