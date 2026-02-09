@@ -18,6 +18,19 @@ import org.jetbrains.annotations.NotNull;
 @State(name = "MyBatisLogHelperSettings", storages = @Storage("mybatis-log-helper.xml"))
 public final class MyBatisLogHelperSettings implements PersistentStateComponent<MyBatisLogHelperSettings.StateValue> {
     /**
+     * 工具窗口历史记录最小条数（包含）。
+     */
+    public static final int TOOL_WINDOW_HISTORY_MIN = 10;
+    /**
+     * 工具窗口历史记录最大条数（包含）。
+     */
+    public static final int TOOL_WINDOW_HISTORY_MAX = 100;
+    /**
+     * 工具窗口历史记录默认条数。
+     */
+    private static final int DEFAULT_TOOL_WINDOW_HISTORY_LIMIT = 30;
+
+    /**
      * 持久化字段载体对象.
      *
      * <p>仅包含可序列化字段，不包含业务逻辑。</p>
@@ -56,11 +69,15 @@ public final class MyBatisLogHelperSettings implements PersistentStateComponent<
         /**
          * 保存的弹窗宽度.
          */
-        public int dialogWidth = 760;
+        public int dialogWidth = 910;
         /**
          * 保存的弹窗高度.
          */
-        public int dialogHeight = 320;
+        public int dialogHeight = 738;
+        /**
+         * 工具窗口历史记录上限（10-100）。
+         */
+        public int toolWindowHistoryLimit = DEFAULT_TOOL_WINDOW_HISTORY_LIMIT;
     }
 
     /**
@@ -107,6 +124,8 @@ public final class MyBatisLogHelperSettings implements PersistentStateComponent<
         if (this.state.dialogHeight <= 0) {
             this.state.dialogHeight = 320;
         }
+        // 工具窗口历史记录上限兜底，避免非法配置
+        this.state.toolWindowHistoryLimit = clampToolWindowHistoryLimit(this.state.toolWindowHistoryLimit);
     }
 
     /**
@@ -233,6 +252,36 @@ public final class MyBatisLogHelperSettings implements PersistentStateComponent<
      */
     public void setDialogHeight(int dialogHeight) {
         state.dialogHeight = dialogHeight;
+    }
+
+    /**
+     * @return 工具窗口历史记录上限
+     */
+    public int getToolWindowHistoryLimit() {
+        return state.toolWindowHistoryLimit;
+    }
+
+    /**
+     * @param limit 设置工具窗口历史记录上限（自动夹紧到 10-100）
+     */
+    public void setToolWindowHistoryLimit(int limit) {
+        state.toolWindowHistoryLimit = clampToolWindowHistoryLimit(limit);
+    }
+
+    /**
+     * 限制历史记录条数范围，防止非法值污染配置.
+     *
+     * @param limit 原始条数
+     * @return 合法范围内的条数
+     */
+    private static int clampToolWindowHistoryLimit(int limit) {
+        if (limit < TOOL_WINDOW_HISTORY_MIN) {
+            return TOOL_WINDOW_HISTORY_MIN;
+        }
+        if (limit > TOOL_WINDOW_HISTORY_MAX) {
+            return TOOL_WINDOW_HISTORY_MAX;
+        }
+        return limit;
     }
 
     /**

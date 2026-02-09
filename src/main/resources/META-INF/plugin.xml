@@ -6,13 +6,13 @@
     <description><![CDATA[
         <h2>MyBatis Log Helper</h2>
         <p>
-            Restore executable SQL from MyBatis <b>Preparing</b> and <b>Parameters</b> logs in the Run/Debug Console.
+            Preview executable SQL from MyBatis <b>Preparing</b> and <b>Parameters</b> logs in the Run/Debug Console.
             This helps you quickly reproduce the exact SQL with all parameters filled in.
         </p>
 
         <h3>Key Features</h3>
         <ul>
-            <li>Context menu actions in Run/Debug Console: <b>Restore Executable SQL</b>, <b>Restore &amp; Copy SQL</b></li>
+            <li>Context menu actions in Run/Debug Console: <b>Preview Executable SQL</b>, <b>Copy Executable SQL</b></li>
             <li>Auto-detects the nearest MyBatis log block around the caret</li>
             <li>Parses parameters and replaces <code>?</code> in order</li>
             <li>Handles common types: null, numbers, strings (with quotes), dates, booleans</li>
@@ -24,8 +24,8 @@
         <ol>
             <li>Open Run/Debug Console and locate MyBatis log output.</li>
             <li>Place the caret on any line inside the log block.</li>
-            <li>Right-click and choose <b>Restore Executable SQL</b> (or <b>Restore &amp; Copy SQL</b>).</li>
-            <li>The restored SQL will be shown in a dialog with a Copy button.</li>
+            <li>Right-click and choose <b>Preview Executable SQL</b> (or <b>Copy Executable SQL</b>).</li>
+            <li>The restored SQL will be shown in a lightweight popup with a Copy button.</li>
         </ol>
 
         <h3>Supported Log Formats</h3>
@@ -88,19 +88,23 @@ select * from t_user where name = 'ZhangSan' and age &gt; 18
                 displayName="MyBatis Log Helper"
                 instance="com.mybatis.loghelper.settings.MyBatisLogHelperConfigurable"/>
         <notificationGroup id="MyBatis Log Helper" displayType="BALLOON"/>
+        <toolWindow id="MyBatis Log Helper"
+                    anchor="bottom"
+                    icon="/icon/svg.svg"
+                    factoryClass="com.mybatis.loghelper.toolwindow.SqlToolWindowFactory"/>
     </extensions>
 
     <actions>
         <action id="com.mybatis.loghelper.actions.RestoreExecutableSqlAction"
                 class="com.mybatis.loghelper.actions.RestoreExecutableSqlAction"
-                text="Restore Executable SQL"
-                description="Restore executable SQL from MyBatis logs">
+                text="Preview Executable SQL"
+                description="Preview executable SQL from MyBatis logs">
             <add-to-group group-id="ConsoleView.PopupMenu" anchor="last"/>
         </action>
         <action id="com.mybatis.loghelper.actions.RestoreAndCopySqlAction"
                 class="com.mybatis.loghelper.actions.RestoreAndCopySqlAction"
-                text="Restore &amp; Copy SQL"
-                description="Restore SQL and copy it to clipboard">
+                text="Copy Executable SQL"
+                description="Copy executable SQL to clipboard">
             <add-to-group group-id="ConsoleView.PopupMenu"
                           anchor="after"
                           relative-to-action="com.mybatis.loghelper.actions.RestoreExecutableSqlAction"/>

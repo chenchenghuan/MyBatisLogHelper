@@ -10,6 +10,8 @@ import org.jetbrains.annotations.Nullable;
 
 import javax.swing.JComponent;
 import javax.swing.JPanel;
+import javax.swing.JSpinner;
+import javax.swing.SpinnerNumberModel;
 import java.time.format.DateTimeFormatter;
 
 /**
@@ -49,6 +51,10 @@ public final class MyBatisLogHelperConfigurable implements Configurable {
      * 复制是否保留美化格式开关组件.
      */
     private JBCheckBox copyBeautifiedCheckBox;
+    /**
+     * 工具窗口历史记录上限组件.
+     */
+    private JSpinner toolWindowHistoryLimitSpinner;
 
     /**
      * 设置页根面板.
@@ -81,6 +87,13 @@ public final class MyBatisLogHelperConfigurable implements Configurable {
         // 结果弹窗默认美化
         beautifyByDefaultCheckBox = new JBCheckBox("Beautify by default in result dialog");
         copyBeautifiedCheckBox = new JBCheckBox("Copy keeps beautified format");
+        // 工具窗口历史记录上限（10-100）
+        toolWindowHistoryLimitSpinner = new JSpinner(new SpinnerNumberModel(
+                MyBatisLogHelperSettings.TOOL_WINDOW_HISTORY_MIN,
+                MyBatisLogHelperSettings.TOOL_WINDOW_HISTORY_MIN,
+                MyBatisLogHelperSettings.TOOL_WINDOW_HISTORY_MAX,
+                1
+        ));
 
         panel = FormBuilder.createFormBuilder()
                 .addComponent(booleanAsNumberCheckBox)
@@ -90,6 +103,7 @@ public final class MyBatisLogHelperConfigurable implements Configurable {
                 .addComponent(copyBeautifiedCheckBox)
                 .addComponent(appendSemicolonCheckBox)
                 .addComponent(beautifyByDefaultCheckBox)
+                .addLabeledComponent("Tool window history limit (10-100):", toolWindowHistoryLimitSpinner)
                 .addComponentFillVertically(new JPanel(), 0)
                 .getPanel();
 
@@ -113,7 +127,8 @@ public final class MyBatisLogHelperConfigurable implements Configurable {
                 || settings.isCloseAfterCopy() != closeAfterCopyCheckBox.isSelected()
                 || settings.isCopyBeautified() != copyBeautifiedCheckBox.isSelected()
                 || settings.isDialogBeautified() != beautifyByDefaultCheckBox.isSelected()
-                || !settings.getDateTimeFormat().equals(dateTimeFormatField.getText().trim());
+                || !settings.getDateTimeFormat().equals(dateTimeFormatField.getText().trim())
+                || settings.getToolWindowHistoryLimit() != getHistoryLimitValue();
     }
 
     /**
@@ -144,6 +159,7 @@ public final class MyBatisLogHelperConfigurable implements Configurable {
         settings.setCloseAfterCopy(closeAfterCopyCheckBox.isSelected());
         settings.setCopyBeautified(copyBeautifiedCheckBox.isSelected());
         settings.setDialogBeautified(beautifyByDefaultCheckBox.isSelected());
+        settings.setToolWindowHistoryLimit(validateHistoryLimit());
     }
 
     /**
@@ -174,6 +190,9 @@ public final class MyBatisLogHelperConfigurable implements Configurable {
         if (beautifyByDefaultCheckBox != null) {
             beautifyByDefaultCheckBox.setSelected(settings.isDialogBeautified());
         }
+        if (toolWindowHistoryLimitSpinner != null) {
+            toolWindowHistoryLimitSpinner.setValue(settings.getToolWindowHistoryLimit());
+        }
     }
 
     /**
@@ -191,5 +210,39 @@ public final class MyBatisLogHelperConfigurable implements Configurable {
         closeAfterCopyCheckBox = null;
         copyBeautifiedCheckBox = null;
         beautifyByDefaultCheckBox = null;
+        toolWindowHistoryLimitSpinner = null;
+    }
+
+    /**
+     * 获取历史记录上限输入值.
+     *
+     * @return 当前输入的历史记录上限
+     */
+    private int getHistoryLimitValue() {
+        if (toolWindowHistoryLimitSpinner == null) {
+            return MyBatisLogHelperSettings.TOOL_WINDOW_HISTORY_MIN;
+        }
+        return ((Number) toolWindowHistoryLimitSpinner.getValue()).intValue();
+    }
+
+    /**
+     * 校验历史记录上限范围，超出范围时抛出提示.
+     *
+     * @return 合法的历史记录上限
+     * @throws ConfigurationException 当范围非法时抛出
+     */
+    private int validateHistoryLimit() throws ConfigurationException {
+        int limit = getHistoryLimitValue();
+        if (limit < MyBatisLogHelperSettings.TOOL_WINDOW_HISTORY_MIN
+                || limit > MyBatisLogHelperSettings.TOOL_WINDOW_HISTORY_MAX) {
+            throw new ConfigurationException(
+                    "Tool window history limit must be between "
+                            + MyBatisLogHelperSettings.TOOL_WINDOW_HISTORY_MIN
+                            + " and "
+                            + MyBatisLogHelperSettings.TOOL_WINDOW_HISTORY_MAX
+                            + "."
+            );
+        }
+        return limit;
     }
 }

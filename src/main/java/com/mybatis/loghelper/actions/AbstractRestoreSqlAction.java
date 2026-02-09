@@ -9,6 +9,7 @@ import com.intellij.openapi.actionSystem.CommonDataKeys;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.editor.ex.EditorEx;
 import com.intellij.openapi.ide.CopyPasteManager;
+import com.mybatis.loghelper.history.SqlHistoryService;
 import com.mybatis.loghelper.parser.LogBlockExtractResult;
 import com.mybatis.loghelper.parser.MyBatisLogBlock;
 import com.mybatis.loghelper.parser.MyBatisLogBlockExtractor;
@@ -16,7 +17,7 @@ import com.mybatis.loghelper.parser.SqlBeautifier;
 import com.mybatis.loghelper.parser.SqlRestoreResult;
 import com.mybatis.loghelper.parser.SqlRestorer;
 import com.mybatis.loghelper.settings.MyBatisLogHelperSettings;
-import com.mybatis.loghelper.ui.SqlResultDialog;
+import com.mybatis.loghelper.ui.SqlResultPopup;
 import org.jetbrains.annotations.NotNull;
 
 import java.awt.datatransfer.StringSelection;
@@ -31,9 +32,15 @@ public abstract class AbstractRestoreSqlAction extends AnAction {
      * <p>true 时忽略设置页中的 autoCopy 开关。</p>
      */
     private final boolean forceCopy;
+    private final boolean showDialog;
 
     protected AbstractRestoreSqlAction(boolean forceCopy) {
+        this(forceCopy, true);
+    }
+
+    protected AbstractRestoreSqlAction(boolean forceCopy, boolean showDialog) {
         this.forceCopy = forceCopy;
+        this.showDialog = showDialog;
     }
 
     @Override
@@ -55,7 +62,7 @@ public abstract class AbstractRestoreSqlAction extends AnAction {
             // 提取失败时提示 warning 并终止
             NotificationGroupManager.getInstance()
                     .getNotificationGroup("MyBatis Log Helper")
-                    .createNotification(extracted.errorMessage(), NotificationType.WARNING)
+                    .createNotification("MyBatis Log Helper", extracted.errorMessage(), NotificationType.WARNING)
                     .notify(e.getProject());
             return;
         }
@@ -67,23 +74,29 @@ public abstract class AbstractRestoreSqlAction extends AnAction {
         if (!settings.isAppendSemicolon()) {
             result = new SqlRestoreResult(trimTrailingSemicolon(result.restoredSql()), result.warnings());
         }
+        SqlHistoryService.getInstance().add(result.restoredSql());
 
         // 5) 计算本次是否需要复制
         //    forceCopy=true 表示当前动作始终复制，否则遵循 autoCopy 设置
         boolean shouldCopy = forceCopy || settings.isAutoCopy();
         if (shouldCopy) {
-            String toCopy = result.restoredSql();
-            if (settings.isCopyBeautified() && settings.isDialogBeautified()) {
-                toCopy = new SqlBeautifier().beautify(toCopy);
-            }
+            String toCopy = buildCopyText(result.restoredSql(), settings);
             CopyPasteManager.getInstance().setContents(new StringSelection(toCopy));
+            if (!showDialog) {
+                NotificationGroupManager.getInstance()
+                        .getNotificationGroup("MyBatis Log Helper")
+                        .createNotification("MyBatis Log Helper", "SQL copied to clipboard.", NotificationType.INFORMATION)
+                        .notify(e.getProject());
+            }
         }
 
-        // 6) 展示还原结果弹窗
-        MyBatisLogBlock block = extracted.block();
-        SqlResultDialog dialog = new SqlResultDialog(e.getProject(), result.restoredSql(), result.warnings(), shouldCopy);
-        dialog.setLogBlockInfo(block);
-        dialog.show();
+        if (showDialog) {
+            // 6) 展示还原结果弹窗
+            MyBatisLogBlock block = extracted.block();
+            SqlResultPopup popup = new SqlResultPopup(e.getProject(), result.restoredSql(), result.warnings(), shouldCopy);
+            popup.setLogBlockInfo(block);
+            popup.showPopup(e.getDataContext());
+        }
     }
 
     @Override
@@ -129,5 +142,56 @@ public abstract class AbstractRestoreSqlAction extends AnAction {
             return sql.substring(0, endWithoutSemicolon + 1);
         }
         return sql;
+    }
+
+    private static String buildCopyText(String restoredSql, MyBatisLogHelperSettings settings) {
+        if (!settings.isCopyBeautified()) {
+            return restoredSql;
+        }
+        if (settings.isDialogBeautified()) {
+            return new SqlBeautifier().beautify(restoredSql);
+        }
+        return toSingleLine(restoredSql);
+    }
+
+    private static String toSingleLine(String sql) {
+        if (sql == null || sql.isEmpty()) {
+            return "";
+        }
+        StringBuilder out = new StringBuilder();
+        boolean inSingleQuotedString = false;
+        boolean lastWasSpace = false;
+        for (int i = 0; i < sql.length(); i++) {
+            char c = sql.charAt(i);
+            if (c == '\'') {
+                if (inSingleQuotedString && i + 1 < sql.length() && sql.charAt(i + 1) == '\'') {
+                    out.append("''");
+                    i++;
+                    continue;
+                }
+                inSingleQuotedString = !inSingleQuotedString;
+                out.append(c);
+                lastWasSpace = false;
+                continue;
+            }
+            if (inSingleQuotedString) {
+                out.append(c);
+                continue;
+            }
+            if (Character.isWhitespace(c)) {
+                if (out.length() > 0 && !lastWasSpace) {
+                    out.append(' ');
+                    lastWasSpace = true;
+                }
+                continue;
+            }
+            out.append(c);
+            lastWasSpace = false;
+        }
+        int len = out.length();
+        if (len > 0 && out.charAt(len - 1) == ' ') {
+            out.deleteCharAt(len - 1);
+        }
+        return out.toString();
     }
 }

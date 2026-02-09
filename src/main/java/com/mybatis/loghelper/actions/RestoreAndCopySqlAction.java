@@ -10,6 +10,6 @@ public final class RestoreAndCopySqlAction extends AbstractRestoreSqlAction {
      * 构造动作实例，启用强制复制。
      */
     public RestoreAndCopySqlAction() {
-        super(true);
+        super(true, false);
     }
 }
