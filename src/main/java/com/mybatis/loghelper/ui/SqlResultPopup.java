@@ -24,6 +24,7 @@ import com.intellij.icons.AllIcons;
 import com.intellij.ui.EditorTextField;
 import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.JBColor;
+import com.intellij.ui.components.JBScrollPane;
 import com.intellij.util.ui.JBUI;
 import com.intellij.util.ui.UIUtil;
 import com.mybatis.loghelper.parser.SqlBeautifier;
@@ -210,7 +211,10 @@ public final class SqlResultPopup {
         int leftIndent = resolveContentLeftInset(editorField);
         toolbarRow.setBorder(JBUI.Borders.emptyLeft(leftIndent));
         headerPanel.setBorder(JBUI.Borders.emptyLeft(leftIndent));
-        resultPanel.add(editorField, BorderLayout.CENTER);
+        // 使用滚动容器包裹，避免长 SQL 无法完整查看
+        JBScrollPane previewScroll = new JBScrollPane(editorField);
+        previewScroll.setBorder(JBUI.Borders.empty());
+        resultPanel.add(previewScroll, BorderLayout.CENTER);
 
         // 底部提示：自动复制与历史入口
         resultPanel.add(createFooterPanel(), BorderLayout.SOUTH);

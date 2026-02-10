@@ -4,80 +4,49 @@
     <vendor email="dev@example.com">MyBatisLogHelper Team</vendor>
 
     <description><![CDATA[
-        <h2>MyBatis Log Helper</h2>
-        <p>
-            Preview executable SQL from MyBatis <b>Preparing</b> and <b>Parameters</b> logs in the Run/Debug Console.
-            This helps you quickly reproduce the exact SQL with all parameters filled in.
-        </p>
+        <h2>别再手动拼 SQL 了，我帮你搞定</h2>
+        <h2>Don't manually spell SQL anymore, I'll take care of it for you</h2>
 
-        <h3>Key Features</h3>
-        <ul>
-            <li>Context menu actions in Run/Debug Console: <b>Preview Executable SQL</b>, <b>Copy Executable SQL</b></li>
-            <li>Auto-detects the nearest MyBatis log block around the caret</li>
-            <li>Parses parameters and replaces <code>?</code> in order</li>
-            <li>Handles common types: null, numbers, strings (with quotes), dates, booleans</li>
-            <li>Warns when SQL placeholders and parameter count do not match</li>
-            <li>Beautify long SQL for easier reading</li>
-        </ul>
+        <p>将 MyBatis 日志还原为可执行 SQL。支持语法高亮、自动格式化及一键复制。</p>
+        <p> Restore MyBatis logs to executable SQL instantly. Features syntax highlighting, formatting, and one-click copy.</p>
 
-        <h3>How to Use</h3>
+        <h3>如何打开 Tool Window</h3>
         <ol>
-            <li>Open Run/Debug Console and locate MyBatis log output.</li>
-            <li>Place the caret on any line inside the log block.</li>
-            <li>Right-click and choose <b>Preview Executable SQL</b> (or <b>Copy Executable SQL</b>).</li>
-            <li>The restored SQL will be shown in a lightweight popup with a Copy button.</li>
+            <li>在 IDEA 右侧工具窗口栏找到 <b>MyBatis Log Helper</b> 图标并点击打开。</li>
+            <li>若未显示：<b>View</b> → <b>Tool Windows</b> → <b>MyBatis Log Helper</b>。</li>
+        </ol>
+        <h3>How to Open the Tool Window</h3>
+        <ol>
+            <li>Locate and click the <b>MyBatis Log Helper</b> icon on the right sidebar of IDEA</li>
+            <li>If not visible, go to the main menu:<b>View</b> → <b>Tool Windows</b> → <b>MyBatis Log Helper</b>.</li>
         </ol>
 
-        <h3>Supported Log Formats</h3>
-        <ul>
-            <li><code>Preparing:</code> or <code>==&gt;  Preparing:</code> for SQL</li>
-            <li><code>Parameters:</code> or <code>==&gt; Parameters:</code> for parameters</li>
-        </ul>
+        <h3>Tool Window 使用方法</h3>
+        <ol>
+            <li>选择 Console 会话后点击 <b>Start</b> 开始监听日志。</li>
+            <li>左侧列表展示解析出的 SQL，右侧预览区支持格式化与复制。</li>
+            <li>支持搜索筛选、历史回看、复制。</li>
+        </ol>
+        <h3>Tool Window Usage</h3>
+        <ol>
+            <li>Select your Console session and click <b>Start</b> to begin monitoring logs.</li>
+            <li>The <b>Left Panel</b> displays the list of parsed SQL statements.</li>
+            <li>The <b>Right Preview Pane</b> supports SQL formatting and copying.</li>
+            <li>Features include search filtering, history review, and one-click copy.</li>
+        </ol>
 
-        <h3>Example</h3>
-        <p>Input log:</p>
-        <pre>
-2026-02-04 10:00:01 [DEBUG] - ==&gt;  Preparing: select * from t_user where name = ? and age &gt; ?
-2026-02-04 10:00:01 [DEBUG] - ==&gt; Parameters: "ZhangSan"(String), 18(Integer)
-        </pre>
-        <p>Restored SQL:</p>
-        <pre>
-select * from t_user where name = 'ZhangSan' and age &gt; 18
-        </pre>
-
-        <h3>Settings</h3>
-        <p>
-            Settings are available under <b>Settings / Preferences &gt; MyBatis Log Helper</b>:
-        </p>
-        <ul>
-            <li>Boolean output style (TRUE/FALSE or 1/0)</li>
-            <li>DateTime format (default: <code>yyyy-MM-dd HH:mm:ss</code>)</li>
-            <li>Auto copy restored SQL</li>
-            <li>Append semicolon automatically</li>
-            <li>Beautify by default in result dialog</li>
-            <li>Copy keeps beautified format</li>
-            <li>Close dialog after copy</li>
-        </ul>
-
-        <h3>Tips</h3>
-        <ul>
-            <li>Place the caret anywhere inside the log block to restore SQL.</li>
-            <li>Use Beautify to format long SQL for readability.</li>
-            <li>Copy button always copies the current view (raw or beautified).</li>
-        </ul>
-
-        <h3>FAQ</h3>
-        <ul>
-            <li><b>Why do I see warnings?</b> Usually the log block is incomplete or parameter count mismatches.</li>
-            <li><b>Can it work with multi-line SQL?</b> Yes, the extractor collects consecutive SQL lines.</li>
-            <li><b>Does it support null values?</b> Yes, null values are restored as <code>NULL</code>.</li>
-        </ul>
-
-        <h3>Notes</h3>
-        <ul>
-            <li>If only Preparing or only Parameters is found, a warning will be shown.</li>
-            <li>When counts mismatch, the dialog still shows the best-effort restoration.</li>
-        </ul>
+        <h3>Console 右键使用方法</h3>
+        <ol>
+            <li>在 Run/Debug Console 中选中任意包含 MyBatis 日志的行。</li>
+            <li>右键选择 <b>Preview Executable SQL (预览可执行 SQL)</b> 或 <b>Copy Executable SQL (直接复制)</b>。</li>
+            <li>弹出轻量气泡可预览/复制。</li>
+        </ol>
+        <h3>Console Context Menu Usage</h3>
+        <ol>
+            <li>Highlight any lines containing MyBatis logs in the standard <b>Run/Debug Console</b>.</li>
+            <li>Right-click and select <b>Preview Executable SQL</b> or <b>Copy Executable SQL</b>.</li>
+            <li>A lightweight popup will appear for instant preview or copying.</li>
+        </ol>
     ]]></description>
 
     <depends>com.intellij.modules.platform</depends>

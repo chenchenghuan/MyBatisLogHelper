@@ -84,6 +84,7 @@ import java.awt.RenderingHints;
 import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
 import javax.swing.SwingConstants;
+import java.awt.event.MouseEvent;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -265,7 +266,15 @@ public final class SqlToolWindowPanel extends JPanel {
     private JComponent createContent() {
         JPanel panel = new JPanel(new BorderLayout(8, 0));
 
-        list = new JBList<>();
+        list = new JBList<>() {
+            @Override
+            public String getToolTipText(MouseEvent event) {
+                // 禁用悬浮提示，避免完整 SQL 影响阅读
+                return null;
+            }
+        };
+        // 禁用可展开项提示（避免自动显示完整 SQL）
+        list.setExpandableItemsEnabled(false);
         list.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         list.getEmptyText().setText("Waiting for MyBatis logs...");
         list.setCellRenderer(new ColoredListCellRenderer<>() {
@@ -299,7 +308,10 @@ public final class SqlToolWindowPanel extends JPanel {
 
         JPanel previewPanel = new JPanel(new BorderLayout(0, 4));
         previewPanel.add(createPreviewHeader(), BorderLayout.NORTH);
-        previewPanel.add(previewField, BorderLayout.CENTER);
+        // 预览区域使用滚动容器，避免长 SQL 显示不全
+        JBScrollPane previewScroll = new JBScrollPane(previewField);
+        previewScroll.setBorder(JBUI.Borders.empty());
+        previewPanel.add(previewScroll, BorderLayout.CENTER);
 
         panel.add(listPanel, BorderLayout.WEST);
         panel.add(previewPanel, BorderLayout.CENTER);
