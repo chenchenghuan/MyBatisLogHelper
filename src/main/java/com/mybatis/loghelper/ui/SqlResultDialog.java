@@ -100,8 +100,8 @@ public final class SqlResultDialog extends DialogWrapper {
     private static final int MAX_SNIPPET_LENGTH = 160;
     private static final Icon ICON_SELECT = AllIcons.Actions.Preview;
     private static final Icon ICON_INSERT = AllIcons.Actions.Execute;
-    private static final Icon ICON_UPDATE = AllIcons.Toolwindows.Changes;
-    private static final Icon ICON_DELETE = AllIcons.Actions.ClearCash;
+    private static final Icon ICON_UPDATE = AllIcons.Actions.Execute;
+    private static final Icon ICON_DELETE = AllIcons.Actions.Execute;
     private static final Icon ICON_OTHER = AllIcons.Actions.Refresh;
     private static final Pattern SQL_KEYWORD_PATTERN =
             Pattern.compile("\\b(SELECT|INSERT|UPDATE|DELETE)\\b", Pattern.CASE_INSENSITIVE);

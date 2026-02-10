@@ -119,7 +119,7 @@ public final class SqlToolWindowPanel extends JPanel {
     private static final Icon ICON_SELECT = AllIcons.Actions.Find;
     private static final Icon ICON_INSERT = AllIcons.Actions.Edit;
     private static final Icon ICON_UPDATE = AllIcons.Actions.Edit;
-    private static final Icon ICON_DELETE = AllIcons.Actions.ClearCash;
+    private static final Icon ICON_DELETE = AllIcons.Actions.DeleteTag;
     private static final Icon ICON_OTHER = AllIcons.Actions.Minimap;
     private static final JBColor BUTTON_HOVER_BG = new JBColor(new Color(0, 0, 0, 20), new Color(255, 255, 255, 28));
     private static final JBColor BUTTON_PRESSED_BG = new JBColor(new Color(0, 0, 0, 40), new Color(255, 255, 255, 45));
