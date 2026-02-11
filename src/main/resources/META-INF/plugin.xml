@@ -4,49 +4,49 @@
     <vendor email="986078379@qq.com">ChengHuan Chen</vendor>
 
     <description><![CDATA[
-        <h2>别再手动拼 SQL 了，我帮你搞定</h2>
-        <h2>Don't manually spell SQL anymore, I'll take care of it for you</h2>
+        <h1>🚀 Stop Hand-Assembling SQL! / 别再手动拼 SQL 了！</h1>
 
-        <p>将 MyBatis 日志还原为可执行 SQL。支持语法高亮、自动格式化及一键复制。</p>
-        <p> Restore MyBatis logs to executable SQL instantly. Features syntax highlighting, formatting, and one-click copy.</p>
+        <p>
+            <b>MyBatis Log Helper</b> is your ultimate productivity booster. It instantly restores executable SQL from console logs, supporting syntax highlighting, formatting, and one-click copying. <br/>
+            <b>MyBatis Log Helper</b> 是你的效率神器。它可以将控制台的 MyBatis 日志自动还原为可执行的 SQL 语句，支持语法高亮、自动格式化及一键复制。
+        </p>
 
-        <h3>如何打开 Tool Window</h3>
-        <ol>
-            <li>在 IDEA 右侧工具窗口栏找到 <b>MyBatis Log Helper</b> 图标并点击打开。</li>
-            <li>若未显示：<b>View</b> → <b>Tool Windows</b> → <b>MyBatis Log Helper</b>。</li>
-        </ol>
-        <h3>How to Open the Tool Window</h3>
-        <ol>
-            <li>Locate and click the <b>MyBatis Log Helper</b> icon on the right sidebar of IDEA</li>
-            <li>If not visible, go to the main menu:<b>View</b> → <b>Tool Windows</b> → <b>MyBatis Log Helper</b>.</li>
-        </ol>
+        <br/>
 
-        <h3>Tool Window 使用方法</h3>
-        <ol>
-            <li>选择 Console 会话后点击 <b>Start</b> 开始监听日志。</li>
-            <li>左侧列表展示解析出的 SQL，右侧预览区支持格式化与复制。</li>
-            <li>支持搜索筛选、历史回看、复制。</li>
-        </ol>
-        <h3>Tool Window Usage</h3>
-        <ol>
-            <li>Select your Console session and click <b>Start</b> to begin monitoring logs.</li>
-            <li>The <b>Left Panel</b> displays the list of parsed SQL statements.</li>
-            <li>The <b>Right Preview Pane</b> supports SQL formatting and copying.</li>
-            <li>Features include search filtering, history review, and one-click copy.</li>
-        </ol>
+        <h2>✨ Key Features / 核心功能</h2>
+        <ul>
+            <li><b>⚡️ Instant Restore:</b> Convert <code>Preparing:</code> and <code>Parameters:</code> logs into valid SQL automatically. <br/><b>⚡️ 自动还原：</b> 自动识别日志中的参数，完美还原 SQL。</li>
+            <li><b>🎨 Syntax Highlighting:</b> Read SQL comfortably with full color support. <br/><b>🎨 语法高亮：</b> 像在编辑器里一样阅读 SQL。</li>
+            <li><b>🔍 Smart Context Menu:</b> Right-click on any console log to preview/copy SQL without opening tool windows. <br/><b>🔍 智能右键：</b> 控制台右键直接预览或复制，无需切换窗口。</li>
+            <li><b>📋 One-Click Copy:</b> Copy formatted SQL ready for DataGrip or Navicat. <br/><b>📋 一键复制：</b> 格式化后的 SQL 直接粘贴到数据库工具运行。</li>
+        </ul>
 
-        <h3>Console 右键使用方法</h3>
-        <ol>
-            <li>在 Run/Debug Console 中选中任意包含 MyBatis 日志的行。</li>
-            <li>右键选择 <b>Preview Executable SQL (预览可执行 SQL)</b> 或 <b>Copy Executable SQL (直接复制)</b>。</li>
-            <li>弹出轻量气泡可预览/复制。</li>
-        </ol>
-        <h3>Console Context Menu Usage</h3>
-        <ol>
-            <li>Highlight any lines containing MyBatis logs in the standard <b>Run/Debug Console</b>.</li>
-            <li>Right-click and select <b>Preview Executable SQL</b> or <b>Copy Executable SQL</b>.</li>
-            <li>A lightweight popup will appear for instant preview or copying.</li>
-        </ol>
+        <br/>
+        <hr/> <br/>
+
+        <h2>📖 Usage Guide (使用指南)</h2>
+
+        <h3>1. The "Right-Click" Magic (推荐：右键极速模式)</h3>
+        <p>The fastest way to use it! / 最快的使用方式！</p>
+        <ul>
+            <li>Highlight any line containing MyBatis logs in the <b>Run/Debug Console</b>.</li>
+            <li>Right-click -> Select <b>Preview Executable SQL</b>.</li>
+            <li>A popup will show the result instantly.</li>
+            <li>在控制台选中任意 MyBatis 日志行 -> 右键 -> 选择 <b>Preview Executable SQL</b>。</li>
+        </ul>
+
+        <h3>2. Tool Window Mode (沉浸式窗口模式)</h3>
+        <ul>
+            <li>Open <b>View</b> → <b>Tool Windows</b> → <b>MyBatis Log Helper</b>.</li>
+            <li>Click <b>Start</b> to monitor logs in real-time.</li>
+            <li>SQLs will be listed on the left, with a preview on the right.</li>
+            <li>打开侧边栏工具窗口，点击 <b>Start</b> 开始实时监听，左侧列表展示历史 SQL，右侧预览。</li>
+        </ul>
+
+        <br/>
+
+        <h3>❤️ Feedback & Support</h3>
+        <p>If you find this plugin helpful, please verify it with a ⭐️ star! <br/> 如果觉得好用，请给个五星好评！</p>
     ]]></description>
 
     <depends>com.intellij.modules.platform</depends>
