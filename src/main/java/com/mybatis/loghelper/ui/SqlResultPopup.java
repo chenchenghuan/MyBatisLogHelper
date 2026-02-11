@@ -36,6 +36,7 @@ import org.jetbrains.annotations.Nullable;
 import javax.swing.BoxLayout;
 import javax.swing.JComponent;
 import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.Font;
@@ -85,6 +86,7 @@ public final class SqlResultPopup {
      * 中心文本框组件引用，用于运行时切换原始/美化内容。
      */
     private EditorTextField editorField;
+    private JBScrollPane previewScroll;
     private JPanel headerPanel;
     private JComponent actionPanel;
     private boolean contextVisible;
@@ -212,7 +214,7 @@ public final class SqlResultPopup {
         toolbarRow.setBorder(JBUI.Borders.emptyLeft(leftIndent));
         headerPanel.setBorder(JBUI.Borders.emptyLeft(leftIndent));
         // 使用滚动容器包裹，避免长 SQL 无法完整查看
-        JBScrollPane previewScroll = new JBScrollPane(editorField);
+        previewScroll = new JBScrollPane(editorField);
         previewScroll.setBorder(JBUI.Borders.empty());
         resultPanel.add(previewScroll, BorderLayout.CENTER);
 
@@ -418,6 +420,7 @@ public final class SqlResultPopup {
         } else {
             editorField.setText(singleLineSql);
         }
+        refreshPreviewScroll();
         ApplicationManager.getApplication().runReadAction(() -> {
             Editor editor = editorField.getEditor();
             if (editor != null) {
@@ -528,6 +531,20 @@ public final class SqlResultPopup {
         float smallSize = UIUtil.getFontSize(UIUtil.FontSize.SMALL);
         component.setFont(base.deriveFont(smallSize));
         component.setForeground(JBColor.GRAY);
+    }
+
+    /**
+     * 刷新预览区域滚动条，避免切换长 SQL 时滚动条延迟出现。
+     */
+    private void refreshPreviewScroll() {
+        if (previewScroll == null || editorField == null) {
+            return;
+        }
+        SwingUtilities.invokeLater(() -> {
+            editorField.revalidate();
+            previewScroll.revalidate();
+            previewScroll.repaint();
+        });
     }
 
     /**

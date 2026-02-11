@@ -146,6 +146,7 @@ public final class SqlToolWindowPanel extends JPanel {
 
     private JBList<SqlHistoryEntry> list;
     private EditorTextField previewField;
+    private JBScrollPane previewScrollPane;
     private JBLabel statusLabel;
     private JBLabel recordsLabel;
     private JComboBox<ConsoleItem> consoleCombo;
@@ -309,9 +310,9 @@ public final class SqlToolWindowPanel extends JPanel {
         JPanel previewPanel = new JPanel(new BorderLayout(0, 4));
         previewPanel.add(createPreviewHeader(), BorderLayout.NORTH);
         // 预览区域使用滚动容器，避免长 SQL 显示不全
-        JBScrollPane previewScroll = new JBScrollPane(previewField);
-        previewScroll.setBorder(JBUI.Borders.empty());
-        previewPanel.add(previewScroll, BorderLayout.CENTER);
+        previewScrollPane = new JBScrollPane(previewField);
+        previewScrollPane.setBorder(JBUI.Borders.empty());
+        previewPanel.add(previewScrollPane, BorderLayout.CENTER);
 
         panel.add(listPanel, BorderLayout.WEST);
         panel.add(previewPanel, BorderLayout.CENTER);
@@ -549,6 +550,7 @@ public final class SqlToolWindowPanel extends JPanel {
         // 预览区支持切换 Raw/Beautify/单行模式
         String text = buildPreviewText(entry);
         previewField.setText(text);
+        refreshPreviewScroll();
         ApplicationManager.getApplication().runReadAction(() -> {
             Editor editor = previewField.getEditor();
             if (editor != null) {
@@ -565,6 +567,20 @@ public final class SqlToolWindowPanel extends JPanel {
         // 复制当前预览内容：Raw 模式下输出 Preparing/Parameters
         String toCopy = showRawLog ? buildRawLogText(entry) : buildSqlCopyText(entry);
         CopyPasteManager.getInstance().setContents(new java.awt.datatransfer.StringSelection(toCopy));
+    }
+
+    /**
+     * 刷新预览区域滚动条，避免切换长 SQL 时滚动条延迟出现。
+     */
+    private void refreshPreviewScroll() {
+        if (previewScrollPane == null || previewField == null) {
+            return;
+        }
+        SwingUtilities.invokeLater(() -> {
+            previewField.revalidate();
+            previewScrollPane.revalidate();
+            previewScrollPane.repaint();
+        });
     }
 
     private void setStatus(String text) {
@@ -745,7 +761,7 @@ public final class SqlToolWindowPanel extends JPanel {
     // 预览区域头部：标题 + Raw 切换 + 复制按钮
     private JComponent createPreviewHeader() {
         JPanel header = new JPanel(new BorderLayout());
-        JBLabel label = new JBLabel("SQL Preview");
+        JBLabel label = new JBLabel("[SQL Preview]");
         rawToggleButton = createIconToggleButton(ICON_RAW, "Show Source Raw Log");
         rawToggleButton.addActionListener(e -> {
             if (updatingRawToggle) {
@@ -756,11 +772,12 @@ public final class SqlToolWindowPanel extends JPanel {
         });
         JButton copyButton = createIconButton(ICON_COPY, "Copy");
         copyButton.addActionListener(e -> copySelected());
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 0));
-        buttonPanel.add(rawToggleButton);
-        buttonPanel.add(copyButton);
-        header.add(label, BorderLayout.WEST);
-        header.add(buttonPanel, BorderLayout.EAST);
+        JPanel leftPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+        leftPanel.add(label);
+        leftPanel.add(rawToggleButton);
+        leftPanel.add(copyButton);
+        // 按钮紧挨 “SQL Preview” 文字右侧
+        header.add(leftPanel, BorderLayout.WEST);
         header.setBorder(JBUI.Borders.emptyBottom(2));
         return header;
     }
