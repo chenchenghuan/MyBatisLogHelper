@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.mybatis.loghelper</id>
     <name>MyBatis Log Helper</name>
-    <vendor email="dev@example.com">MyBatisLogHelper Team</vendor>
+    <vendor email="986078379@qq.com">ChengHuan Chen</vendor>
 
     <description><![CDATA[
         <h2>别再手动拼 SQL 了，我帮你搞定</h2>

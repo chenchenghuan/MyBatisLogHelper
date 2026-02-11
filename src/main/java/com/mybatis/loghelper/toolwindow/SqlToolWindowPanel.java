@@ -87,6 +87,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Deque;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -139,6 +140,8 @@ public final class SqlToolWindowPanel extends JPanel implements Disposable {
     };
     // Preparing 与 Parameters 之间允许插入的非 SQL 行数（容忍噪音日志）
     private static final int MAX_INTERLEAVING_LINES = 5;
+    // 待匹配块的最大缓存数量（避免只有 Preparing 导致内存增长）
+    private static final int MAX_PENDING_BLOCKS = 200;
     // 条件表达式模式（用于判断是否可能是 SQL 续行）
     private static final Pattern SQL_CONDITION_PATTERN = Pattern.compile(
             "^[A-Za-z_`\\[\\]\"]\\S*\\s*(=|<>|!=|>|<|>=|<=|like\\b|in\\b|is\\b).*$",
@@ -509,6 +512,7 @@ public final class SqlToolWindowPanel extends JPanel implements Disposable {
         String prefix = extractPrefix(lineText, PREPARING_MARKER_PATTERN);
         PendingBlock block = new PendingBlock(prefix, sqlPart, ++pendingSequence);
         pendingBlocks.computeIfAbsent(normalizePrefix(prefix), key -> new ArrayDeque<>()).addLast(block);
+        prunePendingBlocks();
     }
 
     private void handleParametersLine(String lineText, int lineIndex) {
@@ -566,6 +570,49 @@ public final class SqlToolWindowPanel extends JPanel implements Disposable {
     private void resetPendingBlocks() {
         pendingBlocks.clear();
         pendingSequence = 0;
+    }
+
+    // 修剪待匹配块数量，防止长期无 Parameters 导致无限增长
+    private void prunePendingBlocks() {
+        int total = countPendingBlocks();
+        if (total <= MAX_PENDING_BLOCKS) {
+            return;
+        }
+        int removeCount = total - MAX_PENDING_BLOCKS;
+        List<PendingBlockHolder> holders = new ArrayList<>();
+        for (Map.Entry<String, Deque<PendingBlock>> entry : pendingBlocks.entrySet()) {
+            for (PendingBlock block : entry.getValue()) {
+                holders.add(new PendingBlockHolder(entry.getKey(), block));
+            }
+        }
+        holders.sort(Comparator.comparingLong(holder -> holder.block.sequence));
+        for (int i = 0; i < removeCount && i < holders.size(); i++) {
+            removePendingBlock(holders.get(i));
+        }
+    }
+
+    // 统计待匹配块总量
+    private int countPendingBlocks() {
+        int total = 0;
+        for (Deque<PendingBlock> queue : pendingBlocks.values()) {
+            total += queue.size();
+        }
+        return total;
+    }
+
+    // 移除指定待匹配块
+    private void removePendingBlock(PendingBlockHolder holder) {
+        if (holder == null) {
+            return;
+        }
+        Deque<PendingBlock> queue = pendingBlocks.get(holder.key);
+        if (queue == null) {
+            return;
+        }
+        queue.remove(holder.block);
+        if (queue.isEmpty()) {
+            pendingBlocks.remove(holder.key);
+        }
     }
 
     // 规范化前缀（避免 null 作为 Map key）
@@ -1917,6 +1964,19 @@ public final class SqlToolWindowPanel extends JPanel implements Disposable {
             this.prefix = prefix;
             this.sqlBuilder = new StringBuilder(sqlPart == null ? "" : sqlPart);
             this.sequence = sequence;
+        }
+    }
+
+    /**
+     * 待匹配块的索引包装，用于排序清理。
+     */
+    private static final class PendingBlockHolder {
+        private final String key;
+        private final PendingBlock block;
+
+        private PendingBlockHolder(String key, PendingBlock block) {
+            this.key = key;
+            this.block = block;
         }
     }
 

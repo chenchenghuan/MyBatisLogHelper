@@ -53,8 +53,8 @@ import java.awt.event.MouseEvent;
  * <p>特性：</p>
  * <ul>
  *     <li>无标题栏，点击外部/ESC 关闭</li>
- *     <li>保留 Beautify / Copy / Copy & Close 等快速操作</li>
- *     <li>支持 Result/History 双 Tab</li>
+ *     <li>支持 Beautify / Copy / Close 等快速操作</li>
+ *     <li>仅展示当前结果，不包含历史 Tab</li>
  * </ul>
  */
 public final class SqlResultPopup {
