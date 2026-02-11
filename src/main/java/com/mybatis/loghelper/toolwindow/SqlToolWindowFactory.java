@@ -1,6 +1,7 @@
 package com.mybatis.loghelper.toolwindow;
 
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowFactory;
 import com.intellij.ui.content.Content;
@@ -21,6 +22,8 @@ public final class SqlToolWindowFactory implements ToolWindowFactory {
         SqlToolWindowPanel panel = new SqlToolWindowPanel(project);
         Content content = ContentFactory.getInstance().createContent(panel, "", false);
         toolWindow.getContentManager().addContent(content);
+        // 跟随内容释放面板资源
+        Disposer.register(content, panel);
     }
 
     /**

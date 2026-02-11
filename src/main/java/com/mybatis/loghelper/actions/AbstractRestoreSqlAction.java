@@ -9,7 +9,6 @@ import com.intellij.openapi.actionSystem.CommonDataKeys;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.editor.ex.EditorEx;
 import com.intellij.openapi.ide.CopyPasteManager;
-import com.mybatis.loghelper.history.SqlHistoryService;
 import com.mybatis.loghelper.parser.LogBlockExtractResult;
 import com.mybatis.loghelper.parser.MyBatisLogBlock;
 import com.mybatis.loghelper.parser.MyBatisLogBlockExtractor;
@@ -74,7 +73,6 @@ public abstract class AbstractRestoreSqlAction extends AnAction {
         if (!settings.isAppendSemicolon()) {
             result = new SqlRestoreResult(trimTrailingSemicolon(result.restoredSql()), result.warnings());
         }
-        SqlHistoryService.getInstance().add(result.restoredSql());
 
         // 5) 计算本次是否需要复制
         //    forceCopy=true 表示当前动作始终复制，否则遵循 autoCopy 设置

@@ -1,5 +1,6 @@
 package com.mybatis.loghelper.toolwindow;
 
+import com.intellij.openapi.Disposable;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.editor.EditorFactory;
@@ -50,9 +51,6 @@ import com.intellij.ui.JBColor;
 import com.intellij.util.ui.JBUI;
 import com.mybatis.loghelper.history.SqlHistoryEntry;
 import com.mybatis.loghelper.history.SqlToolWindowHistoryService;
-import com.mybatis.loghelper.parser.LogBlockExtractResult;
-import com.mybatis.loghelper.parser.MyBatisLogBlock;
-import com.mybatis.loghelper.parser.MyBatisLogBlockExtractor;
 import com.mybatis.loghelper.parser.SqlBeautifier;
 import com.mybatis.loghelper.parser.SqlRestoreResult;
 import com.mybatis.loghelper.parser.SqlRestorer;
@@ -87,7 +85,9 @@ import javax.swing.SwingConstants;
 import java.awt.event.MouseEvent;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -103,7 +103,7 @@ import java.util.regex.Pattern;
  *     <li>维护独立的内存历史（最多 30 条）</li>
  * </ul>
  */
-public final class SqlToolWindowPanel extends JPanel {
+public final class SqlToolWindowPanel extends JPanel implements Disposable {
     private static final String NO_CONSOLE_TEXT = "Select Console";
     private static final Icon ICON_REFRESH = AllIcons.Actions.BuildLoadChanges;
     private static final Icon ICON_START = AllIcons.Actions.Execute;
@@ -126,6 +126,31 @@ public final class SqlToolWindowPanel extends JPanel {
     private static final JBColor BUTTON_PRESSED_BG = new JBColor(new Color(0, 0, 0, 40), new Color(255, 255, 255, 45));
     private static final Pattern SQL_KEYWORD_PATTERN =
             Pattern.compile("\\b(SELECT|INSERT|UPDATE|DELETE)\\b", Pattern.CASE_INSENSITIVE);
+    // MyBatis 日志关键字（允许 ==> 与不同空格）
+    private static final Pattern PREPARING_MARKER_PATTERN =
+            Pattern.compile("==>\\s*Preparing:|Preparing:", Pattern.CASE_INSENSITIVE);
+    private static final Pattern PARAMETERS_MARKER_PATTERN =
+            Pattern.compile("==>\\s*Parameters:|Parameters:", Pattern.CASE_INSENSITIVE);
+    // 常见 SQL 续行前缀关键字
+    private static final String[] SQL_CONTINUATION_PREFIXES = {
+            "select", "from", "where", "and", "or", "join", "left", "right", "inner", "outer",
+            "on", "having", "group", "order", "limit", "offset", "union", "values", "set",
+            "insert", "update", "delete", "into"
+    };
+    // Preparing 与 Parameters 之间允许插入的非 SQL 行数（容忍噪音日志）
+    private static final int MAX_INTERLEAVING_LINES = 5;
+    // 条件表达式模式（用于判断是否可能是 SQL 续行）
+    private static final Pattern SQL_CONDITION_PATTERN = Pattern.compile(
+            "^[A-Za-z_`\\[\\]\"]\\S*\\s*(=|<>|!=|>|<|>=|<=|like\\b|in\\b|is\\b).*$",
+            Pattern.CASE_INSENSITIVE
+    );
+    // 常见日志时间前缀（用于分组时去除，避免仅时间不同导致无法匹配）
+    private static final Pattern LOG_DATE_TIME_PREFIX = Pattern.compile(
+            "^\\s*\\d{4}-\\d{2}-\\d{2}\\s+\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,3})?\\s*"
+    );
+    private static final Pattern LOG_TIME_ONLY_PREFIX = Pattern.compile(
+            "^\\s*\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,3})?\\s*"
+    );
 
     private final Project project;
     private final MyBatisLogHelperSettings settings;
@@ -169,6 +194,9 @@ public final class SqlToolWindowPanel extends JPanel {
     private boolean suspendPreviewUpdate;
     // Console 发生切换后，下一次 Start 需要清空历史
     private boolean clearHistoryOnStart;
+    // 正在等待 Parameters 的 SQL 块（按前缀分组，避免并发错配）
+    private final Map<String, Deque<PendingBlock>> pendingBlocks = new LinkedHashMap<>();
+    private long pendingSequence;
     // 状态栏图标（运行中/未运行）
     private final Icon statusRunningIcon;
     private final Icon statusStoppedIcon;
@@ -346,6 +374,8 @@ public final class SqlToolWindowPanel extends JPanel {
         // 解绑旧监听，绑定新文档
         detachConsoleListener();
         detachProcessListener();
+        // 绑定前先清理未完成的解析状态
+        resetPendingBlocks();
         // 记录是否切换了 Console，切换后下一次 Start 清空历史
         if (boundEditor != null && boundEditor != editor) {
             clearHistoryOnStart = true;
@@ -376,6 +406,11 @@ public final class SqlToolWindowPanel extends JPanel {
             clearHistory();
         }
         if (boundDocument != null) {
+            // 重新开始监听时从当前末尾开始，避免重复解析旧日志
+            resetPendingBlocks();
+            lastProcessedLineCount = boundDocument.getLineCount();
+            lastProcessedParametersLineIndex = -1;
+            lastProcessedParametersLineText = null;
             attachConsoleListenerIfNeeded();
             setStatus("Capturing...");
             updateCaptureButtons();
@@ -403,24 +438,39 @@ public final class SqlToolWindowPanel extends JPanel {
         if (lineCount == 0) {
             return;
         }
+        if (lineCount < lastProcessedLineCount) {
+            // Console 被清空或重启，清理解析状态
+            resetPendingBlocks();
+        }
         int start = resolveStartLine(lineCount);
-        String text = document.getText();
         for (int i = start; i < lineCount; i++) {
             String lineText = getLineText(document, i);
+            if (containsPreparingMarker(lineText)) {
+                handlePreparingLine(lineText);
+                continue;
+            }
             if (containsParametersMarker(lineText)) {
                 if (isDuplicateParametersLine(i, lineText)) {
                     continue;
                 }
-                processParametersLine(text, i);
+                handleParametersLine(lineText, i);
                 lastProcessedParametersLineIndex = i;
                 lastProcessedParametersLineText = lineText;
+                continue;
+            }
+            if (!pendingBlocks.isEmpty()) {
+                handlePendingLine(lineText);
             }
         }
         lastProcessedLineCount = lineCount;
     }
 
+    private boolean containsPreparingMarker(String line) {
+        return containsMarker(line, PREPARING_MARKER_PATTERN);
+    }
+
     private boolean containsParametersMarker(String line) {
-        return line.contains("Parameters:") || line.contains("==> Parameters:");
+        return containsMarker(line, PARAMETERS_MARKER_PATTERN);
     }
 
     private int resolveStartLine(int lineCount) {
@@ -454,23 +504,259 @@ public final class SqlToolWindowPanel extends JPanel {
         return document.getText(new TextRange(start, end));
     }
 
-    private void processParametersLine(String fullText, int lineIndex) {
-        // 使用全量文本 + 行号作为锚点提取日志块
-        MyBatisLogBlockExtractor extractor = new MyBatisLogBlockExtractor();
-        LogBlockExtractResult extracted = extractor.extract(fullText, lineIndex);
-        if (!extracted.isSuccess()) {
+    private void handlePreparingLine(String lineText) {
+        String sqlPart = extractAfterMarker(lineText, PREPARING_MARKER_PATTERN).trim();
+        String prefix = extractPrefix(lineText, PREPARING_MARKER_PATTERN);
+        PendingBlock block = new PendingBlock(prefix, sqlPart, ++pendingSequence);
+        pendingBlocks.computeIfAbsent(normalizePrefix(prefix), key -> new ArrayDeque<>()).addLast(block);
+    }
+
+    private void handleParametersLine(String lineText, int lineIndex) {
+        String prefix = extractPrefix(lineText, PARAMETERS_MARKER_PATTERN);
+        PendingBlock block = pollPendingBlockByPrefix(prefix);
+        if (block == null) {
+            // 兜底：仅在只存在一个待匹配块时，避免误配
+            block = pollOnlyPendingBlock();
+        }
+        if (block == null) {
+            // 兜底：尝试在最近窗口内回扫 Preparing
+            block = extractPendingBlockFromWindow(prefix, lineIndex);
+            if (block == null) {
+                return;
+            }
+        }
+        String parametersRaw = extractAfterMarker(lineText, PARAMETERS_MARKER_PATTERN).trim();
+        String sqlTemplate = block.sqlBuilder.toString().trim();
+        if (sqlTemplate.isEmpty()) {
             return;
         }
         // 还原 SQL 并追加到工具窗口历史
         SqlRestorer restorer = new SqlRestorer();
-        SqlRestoreResult result = restorer.restore(extracted.block(), settings.toRenderOptions());
+        SqlRestoreResult result = restorer.restore(sqlTemplate, parametersRaw, settings.toRenderOptions());
         String restored = result.restoredSql();
         if (!settings.isAppendSemicolon()) {
             restored = trimTrailingSemicolon(restored);
         }
-        MyBatisLogBlock block = extracted.block();
-        historyService.add(restored, block.sqlTemplate(), block.parametersRaw());
+        historyService.add(restored, sqlTemplate, parametersRaw);
         SwingUtilities.invokeLater(this::refreshList);
+    }
+
+    private void handlePendingLine(String lineText) {
+        if (pendingBlocks.isEmpty()) {
+            return;
+        }
+        String trimmed = lineText.trim();
+        if (trimmed.isEmpty()) {
+            return;
+        }
+        PendingBlock matched = findBestMatchingBlock(lineText);
+        if (matched != null) {
+            if (matched.sqlBuilder.length() > 0) {
+                matched.sqlBuilder.append(' ');
+            }
+            matched.sqlBuilder.append(trimmed);
+            // 命中续行后重置噪音计数
+            matched.interleavingCount = 0;
+        }
+        // 非续行行：视为噪音日志，允许一定数量的插入
+        incrementInterleavingForOthers(matched);
+    }
+
+    // 清理正在解析的 Preparing/Parameters 块
+    private void resetPendingBlocks() {
+        pendingBlocks.clear();
+        pendingSequence = 0;
+    }
+
+    // 规范化前缀（避免 null 作为 Map key）
+    private String normalizePrefix(String prefix) {
+        if (prefix == null) {
+            return "";
+        }
+        String normalized = LOG_DATE_TIME_PREFIX.matcher(prefix).replaceFirst("");
+        normalized = LOG_TIME_ONLY_PREFIX.matcher(normalized).replaceFirst("");
+        return normalized.trim();
+    }
+
+    // 根据 Parameters 前缀出队对应待匹配块
+    private PendingBlock pollPendingBlockByPrefix(String prefix) {
+        String key = normalizePrefix(prefix);
+        Deque<PendingBlock> queue = pendingBlocks.get(key);
+        if (queue == null || queue.isEmpty()) {
+            return null;
+        }
+        PendingBlock block = queue.pollFirst();
+        if (queue.isEmpty()) {
+            pendingBlocks.remove(key);
+        }
+        return block;
+    }
+
+    // 兜底：当仅有一个待匹配块时直接取出，避免空结果
+    private PendingBlock pollOnlyPendingBlock() {
+        if (pendingBlocks.size() != 1) {
+            return null;
+        }
+        Map.Entry<String, Deque<PendingBlock>> entry = pendingBlocks.entrySet().iterator().next();
+        Deque<PendingBlock> queue = entry.getValue();
+        if (queue == null || queue.size() != 1) {
+            return null;
+        }
+        PendingBlock block = queue.pollFirst();
+        pendingBlocks.clear();
+        return block;
+    }
+
+    // 在所有待匹配块中选择“最可能”的续行目标（以最新块为准）
+    private PendingBlock findBestMatchingBlock(String lineText) {
+        PendingBlock best = null;
+        for (Deque<PendingBlock> queue : pendingBlocks.values()) {
+            for (PendingBlock block : queue) {
+                if (!isContinuationLine(lineText, block.prefix)) {
+                    continue;
+                }
+                if (best == null || block.sequence > best.sequence) {
+                    best = block;
+                }
+            }
+        }
+        return best;
+    }
+
+    // 对未命中的块累计噪音行数，超过阈值则丢弃
+    private void incrementInterleavingForOthers(PendingBlock matched) {
+        for (java.util.Iterator<Map.Entry<String, Deque<PendingBlock>>> entryIterator =
+             pendingBlocks.entrySet().iterator(); entryIterator.hasNext(); ) {
+            Map.Entry<String, Deque<PendingBlock>> entry = entryIterator.next();
+            Deque<PendingBlock> queue = entry.getValue();
+            for (java.util.Iterator<PendingBlock> blockIterator = queue.iterator(); blockIterator.hasNext(); ) {
+                PendingBlock block = blockIterator.next();
+                if (block == matched) {
+                    continue;
+                }
+                block.interleavingCount++;
+                if (block.interleavingCount > MAX_INTERLEAVING_LINES) {
+                    blockIterator.remove();
+                }
+            }
+            if (queue.isEmpty()) {
+                entryIterator.remove();
+            }
+        }
+    }
+
+    // 当未命中待匹配块时，从最近窗口回扫 Preparing
+    private PendingBlock extractPendingBlockFromWindow(String parametersPrefix, int parametersLineIndex) {
+        if (boundDocument == null || parametersLineIndex <= 0) {
+            return null;
+        }
+        int start = Math.max(0, parametersLineIndex - 80);
+        String normalizedPrefix = normalizePrefix(parametersPrefix);
+        int preparingLineIndex = -1;
+        String preparingLineText = null;
+        // 向上回扫找到最近的 Preparing
+        for (int i = parametersLineIndex - 1; i >= start; i--) {
+            String line = getLineText(boundDocument, i);
+            if (!containsPreparingMarker(line)) {
+                continue;
+            }
+            String prefix = normalizePrefix(extractPrefix(line, PREPARING_MARKER_PATTERN));
+            if (!normalizedPrefix.isEmpty() && !normalizedPrefix.equals(prefix)) {
+                continue;
+            }
+            preparingLineIndex = i;
+            preparingLineText = line;
+            break;
+        }
+        if (preparingLineIndex < 0 || preparingLineText == null) {
+            return null;
+        }
+        String sqlPart = extractAfterMarker(preparingLineText, PREPARING_MARKER_PATTERN).trim();
+        PendingBlock block = new PendingBlock(extractPrefix(preparingLineText, PREPARING_MARKER_PATTERN), sqlPart, ++pendingSequence);
+        // 从 Preparing 到 Parameters 之间按续行规则拼接
+        int interleaving = 0;
+        for (int i = preparingLineIndex + 1; i < parametersLineIndex; i++) {
+            String line = getLineText(boundDocument, i);
+            if (line == null || line.isBlank()) {
+                continue;
+            }
+            if (containsPreparingMarker(line) || containsParametersMarker(line)) {
+                // 中间出现新的块，直接终止
+                return null;
+            }
+            if (isContinuationLine(line, block.prefix)) {
+                if (block.sqlBuilder.length() > 0) {
+                    block.sqlBuilder.append(' ');
+                }
+                block.sqlBuilder.append(line.trim());
+                interleaving = 0;
+            } else {
+                interleaving++;
+                if (interleaving > MAX_INTERLEAVING_LINES) {
+                    return null;
+                }
+            }
+        }
+        return block;
+    }
+
+    // 判断一行是否可能是 SQL 续行
+    private boolean isContinuationLine(String line, String preparingPrefix) {
+        if (line == null) {
+            return false;
+        }
+        if (preparingPrefix != null && !preparingPrefix.isEmpty() && line.startsWith(preparingPrefix)) {
+            return true;
+        }
+        if (line.startsWith(" ") || line.startsWith("\t")) {
+            return true;
+        }
+        String trimmed = line.trim();
+        if (trimmed.contains("?")) {
+            return true;
+        }
+        if (SQL_CONDITION_PATTERN.matcher(trimmed).matches()) {
+            return true;
+        }
+        String lower = trimmed.toLowerCase(Locale.ROOT);
+        for (String prefix : SQL_CONTINUATION_PREFIXES) {
+            if (lower.startsWith(prefix + " ") || lower.equals(prefix)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // 判断一行是否包含标记
+    private boolean containsMarker(String line, Pattern pattern) {
+        if (line == null || pattern == null) {
+            return false;
+        }
+        return pattern.matcher(line).find();
+    }
+
+    // 提取标记后面的正文
+    private String extractAfterMarker(String line, Pattern pattern) {
+        if (line == null || pattern == null) {
+            return "";
+        }
+        java.util.regex.Matcher matcher = pattern.matcher(line);
+        if (matcher.find()) {
+            return line.substring(matcher.end());
+        }
+        return line;
+    }
+
+    // 提取标记前缀（通常是日志头部）
+    private String extractPrefix(String line, Pattern pattern) {
+        if (line == null || pattern == null) {
+            return "";
+        }
+        java.util.regex.Matcher matcher = pattern.matcher(line);
+        if (matcher.find()) {
+            return line.substring(0, matcher.start());
+        }
+        return "";
     }
 
     private void clearHistory() {
@@ -969,6 +1255,16 @@ public final class SqlToolWindowPanel extends JPanel {
             return ((Process) process).isAlive();
         }
         return capturing;
+    }
+
+    @Override
+    public void dispose() {
+        // 工具窗口销毁时释放监听器，避免内存泄漏或重复回调
+        detachConsoleListener();
+        detachProcessListener();
+        boundEditor = null;
+        boundDocument = null;
+        resetPendingBlocks();
     }
 
     // 为状态栏图标创建可着色版本（用于运行态绿色显示）
@@ -1606,6 +1902,22 @@ public final class SqlToolWindowPanel extends JPanel {
         private String name;
         private String mode;
         private String pid;
+    }
+
+    /**
+     * 待匹配的日志块信息（Preparing 已到，等待 Parameters）。
+     */
+    private static final class PendingBlock {
+        private final String prefix;
+        private final StringBuilder sqlBuilder;
+        private final long sequence;
+        private int interleavingCount;
+
+        private PendingBlock(String prefix, String sqlPart, long sequence) {
+            this.prefix = prefix;
+            this.sqlBuilder = new StringBuilder(sqlPart == null ? "" : sqlPart);
+            this.sequence = sequence;
+        }
     }
 
     private EditorTextField createEditorField(String text) {
