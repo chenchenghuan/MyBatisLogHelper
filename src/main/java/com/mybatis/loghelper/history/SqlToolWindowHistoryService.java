@@ -42,9 +42,9 @@ public final class SqlToolWindowHistoryService {
     public synchronized List<SqlHistoryEntry> list() {
         // 每次读取时都按最新配置裁剪，便于动态调整上限
         trimToLimit(resolveMaxEntries());
-        // 按时间顺序返回（从早到晚）
+        // 按时间倒序返回（从晚到早）
         List<SqlHistoryEntry> result = new ArrayList<>(entries);
-        result.sort(Comparator.comparingLong(SqlHistoryEntry::timestampMillis));
+        result.sort(Comparator.comparingLong(SqlHistoryEntry::timestampMillis).reversed());
         return result;
     }
 

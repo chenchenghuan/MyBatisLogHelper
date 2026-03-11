@@ -1,6 +1,6 @@
 <idea-plugin>
     <id>com.mybatis.loghelper</id>
-    <name>MyBatis Log Helper</name>
+    <name>MyBatis Log Helper (Free)</name>
     <vendor email="986078379@qq.com">ChengHuan Chen</vendor>
 
     <description><![CDATA[
@@ -47,6 +47,7 @@
 
         <h3>❤️ Feedback & Support</h3>
         <p>If you find this plugin helpful, please verify it with a ⭐️ star! <br/> 如果觉得好用，请给个五星好评！</p>
+        <p>Free & Open-Source - No cost, transparent code, ready for you to use and contribute with confidence.<br/>完全免费与开源 - 无任何费用，代码透明，可放心使用！</p>
     ]]></description>
 
     <depends>com.intellij.modules.platform</depends>

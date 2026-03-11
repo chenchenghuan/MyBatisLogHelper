@@ -36,6 +36,11 @@ public final class SqlBeautifier {
     private static final Set<String> LOGICAL_KEYWORDS = Set.of("AND", "OR");
 
     /**
+     * 这些关键字后面保留空格再跟括号（例如 IN (...)）。
+     */
+    private static final Set<String> PAREN_SPACE_KEYWORDS = Set.of("IN", "VALUES", "EXISTS");
+
+    /**
      * 适合在逗号后换行的子句.
      */
     private static final Set<String> COMMA_BREAK_CLAUSES = Set.of("SELECT", "SET", "VALUES");
@@ -69,6 +74,7 @@ public final class SqlBeautifier {
 
         for (int i = 0; i < tokens.size(); i++) {
             String token = tokens.get(i);
+            String previousToken = i > 0 ? tokens.get(i - 1) : null;
             if (";".equals(token)) {
                 continue;
             }
@@ -76,7 +82,7 @@ public final class SqlBeautifier {
             String upper = token.toUpperCase(Locale.ROOT);
 
             if ("(".equals(token)) {
-                if (!lineStart && needsSpaceBeforeSymbol(out)) {
+                if (!lineStart && shouldInsertSpaceBeforeParen(previousToken) && needsSpaceBeforeSymbol(out)) {
                     out.append(' ');
                 }
                 out.append('(');
@@ -137,6 +143,22 @@ public final class SqlBeautifier {
             formatted = formatted + ";";
         }
         return formatted;
+    }
+
+    /**
+     * 判断是否应该在 "(" 前插入空格.
+     *
+     * <p>MySQL 在部分配置下无法识别 "SUM (x)"，需避免函数名与 "(" 之间的空格。</p>
+     */
+    private boolean shouldInsertSpaceBeforeParen(String previousToken) {
+        if (previousToken == null || previousToken.isBlank()) {
+            return false;
+        }
+        String upper = previousToken.toUpperCase(Locale.ROOT);
+        if (CLAUSE_KEYWORDS.contains(upper) || LOGICAL_KEYWORDS.contains(upper)) {
+            return true;
+        }
+        return PAREN_SPACE_KEYWORDS.contains(upper);
     }
 
     /**
